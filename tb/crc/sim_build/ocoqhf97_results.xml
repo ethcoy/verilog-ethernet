@@ -1,0 +1,6 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="0" />
+    <testcase name="vga_sig_gen" classname="crc_tb" file="/home/ecoyle/repos/verilog-ethernet/tb/crc/crc_tb.py" lineno="14" time="0.01810169219970703" sim_time_ns="200.0" ratio_time="11048.690796059218" />
+  </testsuite>
+</testsuites>
