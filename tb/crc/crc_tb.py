@@ -17,7 +17,7 @@ async def crc(dut):
     dut.i_rst.value = 0
     dut.i_clk.value = 0
 
-    dut.i_data.value = 0xEE
+    dut.i_data.value = 0x73
     dut.i_data_valid.value = 0
 
     cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
@@ -29,7 +29,7 @@ async def crc(dut):
 
 parameters = {}
 parameters['c_DATA_WIDTH'] = 8
-parameters['c_GEN_POLY'] = 0x55
+parameters['c_GEN_POLY'] = 0x07
 parameters['c_GEN_POLY_WIDTH'] = 8
 
 c_DATA_WIDTH = parameters['c_DATA_WIDTH']
