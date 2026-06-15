@@ -1,8 +1,0 @@
-<testsuites name="results">
-  <testsuite name="all" package="all">
-    <property name="random_seed" value="0" />
-    <testcase name="crc" classname="crc_tb" file="/home/ecoyle/repos/verilog-ethernet/tb/crc/crc_tb.py" lineno="14" time="0.0006997585296630859" sim_time_ns="0.0" ratio_time="0.0">
-      <failure error_type="TypeError" error_msg="ord() expected a character, but string of length 2 found" />
-    </testcase>
-  </testsuite>
-</testsuites>

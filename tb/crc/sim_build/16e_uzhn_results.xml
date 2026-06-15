@@ -1,6 +1,0 @@
-<testsuites name="results">
-  <testsuite name="all" package="all">
-    <property name="random_seed" value="0" />
-    <testcase name="crc" classname="crc_tb" file="/home/ecoyle/repos/verilog-ethernet/tb/crc/crc_tb.py" lineno="14" time="0.010194540023803711" sim_time_ns="200.0" ratio_time="19618.344675974648" />
-  </testsuite>
-</testsuites>

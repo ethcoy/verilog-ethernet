@@ -1,8 +1,0 @@
-<testsuites name="results">
-  <testsuite name="all" package="all">
-    <property name="random_seed" value="0" />
-    <testcase name="vga_sig_gen" classname="crc_tb" file="/home/ecoyle/repos/verilog-ethernet/tb/crc/crc_tb.py" lineno="12" time="0.0018107891082763672" sim_time_ns="0.0" ratio_time="0.0">
-      <failure error_type="AttributeError" error_msg="crc contains no child object named T0" />
-    </testcase>
-  </testsuite>
-</testsuites>

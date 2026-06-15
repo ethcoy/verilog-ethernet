@@ -1,8 +1,0 @@
-<testsuites name="results">
-  <testsuite name="all" package="all">
-    <property name="random_seed" value="0" />
-    <testcase name="vga_sig_gen" classname="crc_tb" file="/home/ecoyle/repos/verilog-ethernet/tb/crc/crc_tb.py" lineno="14" time="0.019436359405517578" sim_time_ns="200.0" ratio_time="10289.9928853561">
-      <failure error_type="ValueError" error_msg="setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (8, 8) + inhomogeneous part." />
-    </testcase>
-  </testsuite>
-</testsuites>
