@@ -1,7 +1,11 @@
 module crc #(
-    parameter c_DATA_WIDTH = 16,
-    parameter c_GEN_POLY = 8'h07,
-    parameter c_GEN_POLY_WIDTH = 8
+    parameter c_DATA_WIDTH = 8,
+    parameter c_GEN_POLY = 32'h04c11db7,
+    parameter c_GEN_POLY_WIDTH = 32,
+    parameter c_INITIAL_CRC_VALUE = {c_GEN_POLY_WIDTH{1'b1}},
+    parameter c_REVERSE_INPUT_BIT_ORDER = 1,
+    parameter c_REVERSE_OUTPUT_BIT_ORDER = 1,
+    parameter c_COMPLEMENT_OUTPUT = 1
 ) (
     input wire i_rst,
 
@@ -12,10 +16,32 @@ module crc #(
     output wire [c_GEN_POLY_WIDTH - 1:0] o_crc
 );
 
-reg [c_GEN_POLY_WIDTH - 1:0] r_crc = {c_GEN_POLY_WIDTH{1'b0}};
+reg [c_GEN_POLY_WIDTH - 1:0] r_crc = c_INITIAL_CRC_VALUE;
 reg [c_GEN_POLY_WIDTH - 1:0] crc_next = {c_GEN_POLY_WIDTH{1'b0}};
 
-assign o_crc = r_crc;
+`ifdef c_REVERSE_OUTPUT_BIT_ORDER
+    `ifdef c_COMPLEMENT_OUTPUT
+        genvar i;
+        generate
+            for (i = 0; i < c_GEN_POLY_WIDTH; i = i + 1) begin
+                assign o_crc[i] = ~r_crc[c_GEN_POLY_WIDTH - 1 - i];
+            end
+        endgenerate
+    `else
+        genvar i;
+        generate
+            for (i = 0; i < c_GEN_POLY_WIDTH; i = i + 1) begin
+                assign o_crc[i] = r_crc[c_GEN_POLY_WIDTH - 1 - i];
+            end
+        endgenerate
+    `endif
+`else
+    `ifdef c_COMPLEMENT_OUTPUT
+        assign o_crc = ~r_crc;
+    `else
+        assign o_crc = r_crc;
+    `endif
+`endif
 
 function [c_GEN_POLY_WIDTH - 1:0] crc (input [c_DATA_WIDTH - 1:0] i_data, input [c_GEN_POLY_WIDTH - 1:0] o_crc);
     reg [0:c_GEN_POLY_WIDTH - 1] A [0:c_GEN_POLY_WIDTH - 1];
@@ -42,16 +68,18 @@ function [c_GEN_POLY_WIDTH - 1:0] crc (input [c_DATA_WIDTH - 1:0] i_data, input 
                 
         for (i = 0; i < c_DATA_WIDTH; i = i + 1) begin
             if (i == 0) begin
-                for (j = 0; j < c_GEN_POLY_WIDTH; j = j + 1) begin
-                    S[c_GEN_POLY_WIDTH - 1 - j] = c_GEN_POLY[c_GEN_POLY_WIDTH - 1 - j] * i_data[0];
-                end
+                `ifdef c_REVERSE_INPUT_BIT_ORDER
+                    S = c_GEN_POLY & {c_GEN_POLY_WIDTH{i_data[c_DATA_WIDTH - 1'b1]}};
+                `else
+                    S = c_GEN_POLY & {c_GEN_POLY_WIDTH{i_data[0]}};
+                `endif
             end
             
             if (i > 0) begin
                 for (j = 0; j < c_GEN_POLY_WIDTH; j = j + 1) begin
                     for (k = 0; k < c_GEN_POLY_WIDTH; k = k + 1) begin
                         for (w = 0; w < c_GEN_POLY_WIDTH; w = w + 1) begin
-                            T1[j][k] = T0[j][w] * A[w][k] ^ T1[j][k];
+                            T1[j][k] = (T0[j][w] & A[w][k]) ^ T1[j][k];
                         end
                     end
                 end
@@ -60,7 +88,11 @@ function [c_GEN_POLY_WIDTH - 1:0] crc (input [c_DATA_WIDTH - 1:0] i_data, input 
                     for (k = 0; k < c_GEN_POLY_WIDTH; k = k + 1) begin
                         T0[j][k] = T1[j][k];
                         T1[j][k] = 0;
-                        S[c_GEN_POLY_WIDTH - 1 - j] = T0[j][k] * c_GEN_POLY[c_GEN_POLY_WIDTH - 1 - k] * i_data[i] ^ S[c_GEN_POLY_WIDTH - 1 - j];
+                        `ifdef c_REVERSE_INPUT_BIT_ORDER
+                            S[c_GEN_POLY_WIDTH - 1 - j] = T0[j][k] * c_GEN_POLY[c_GEN_POLY_WIDTH - 1 - k] * i_data[c_DATA_WIDTH - 1'b1 - i] ^ S[c_GEN_POLY_WIDTH - 1 - j];
+                        `else
+                            S[c_GEN_POLY_WIDTH - 1 - j] = T0[j][k] * c_GEN_POLY[c_GEN_POLY_WIDTH - 1 - k] * i_data[i] ^ S[c_GEN_POLY_WIDTH - 1 - j];
+                        `endif
                     end
                 end                
             end
@@ -78,7 +110,7 @@ function [c_GEN_POLY_WIDTH - 1:0] crc (input [c_DATA_WIDTH - 1:0] i_data, input 
             for (k = 0; k < c_GEN_POLY_WIDTH; k = k + 1) begin
                 T0[j][k] = T1[j][k];
                 T1[j][k] = 0;
-                S[c_GEN_POLY_WIDTH - 1 - j] = T0[j][k] * o_crc[c_GEN_POLY_WIDTH - 1 - k] ^ S[c_GEN_POLY_WIDTH - 1 - j];
+                S[c_GEN_POLY_WIDTH - 1 - j] = T0[j][k] * r_crc[c_GEN_POLY_WIDTH - 1 - k] ^ S[c_GEN_POLY_WIDTH - 1 - j];
             end
         end
                           
@@ -88,7 +120,7 @@ function [c_GEN_POLY_WIDTH - 1:0] crc (input [c_DATA_WIDTH - 1:0] i_data, input 
 endfunction
 
 always @(*) begin
-    crc_next = crc(i_data, o_crc);
+    crc_next = crc(i_data, r_crc);
 end
 
 always @(posedge i_clk) begin
