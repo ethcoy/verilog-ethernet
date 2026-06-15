@@ -127,6 +127,10 @@ always @(posedge i_clk) begin
     if (i_data_valid) begin
         r_crc <= crc_next;
     end
+    
+    if (i_rst) begin
+        r_crc <= c_INITIAL_CRC_VALUE;
+    end
 end
 
 endmodule
