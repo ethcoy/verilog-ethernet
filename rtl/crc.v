@@ -1,5 +1,5 @@
 module crc #(
-    parameter c_DATA_WIDTH = 8,
+    parameter c_DATA_WIDTH = 16,
     parameter c_GEN_POLY = 8'h07,
     parameter c_GEN_POLY_WIDTH = 8
 ) (
@@ -48,14 +48,12 @@ function [c_GEN_POLY_WIDTH - 1:0] crc (input [c_DATA_WIDTH - 1:0] i_data, input 
             end
             
             if (i > 0) begin
-                $display("%d", i);
                 for (j = 0; j < c_GEN_POLY_WIDTH; j = j + 1) begin
                     for (k = 0; k < c_GEN_POLY_WIDTH; k = k + 1) begin
                         for (w = 0; w < c_GEN_POLY_WIDTH; w = w + 1) begin
                             T1[j][k] = T0[j][w] * A[w][k] ^ T1[j][k];
                         end
                     end
-                    $display("%b", T1[j]);
                 end
                 
                 for (j = 0; j < c_GEN_POLY_WIDTH; j = j + 1) begin
@@ -80,7 +78,7 @@ function [c_GEN_POLY_WIDTH - 1:0] crc (input [c_DATA_WIDTH - 1:0] i_data, input 
             for (k = 0; k < c_GEN_POLY_WIDTH; k = k + 1) begin
                 T0[j][k] = T1[j][k];
                 T1[j][k] = 0;
-                S[c_GEN_POLY_WIDTH - 1 - j] = T0[j][k] * o_crc[c_DATA_WIDTH - 1 - k] ^ S[c_GEN_POLY_WIDTH - 1 - j];
+                S[c_GEN_POLY_WIDTH - 1 - j] = T0[j][k] * o_crc[c_GEN_POLY_WIDTH - 1 - k] ^ S[c_GEN_POLY_WIDTH - 1 - j];
             end
         end
                           

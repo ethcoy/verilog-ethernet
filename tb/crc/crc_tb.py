@@ -17,18 +17,18 @@ async def crc(dut):
     dut.i_rst.value = 0
     dut.i_clk.value = 0
 
-    dut.i_data.value = 0x73
+    dut.i_data.value = 0x7311
     dut.i_data_valid.value = 0
 
     cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
 
     await Timer(200, unit='ns')
 
-    print(hex(int(dut.crc_next.value)))
-    print(hex(int(dut.o_crc.value)))
+    print(f'crc_next = {hex(int(dut.crc_next.value))}')
+    print(f'o_crc = {hex(int(dut.o_crc.value))}')
 
 parameters = {}
-parameters['c_DATA_WIDTH'] = 8
+parameters['c_DATA_WIDTH'] = 16
 parameters['c_GEN_POLY'] = 0x07
 parameters['c_GEN_POLY_WIDTH'] = 8
 

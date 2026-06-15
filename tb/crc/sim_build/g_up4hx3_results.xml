@@ -1,0 +1,8 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="0" />
+    <testcase name="crc" classname="crc_tb" file="/home/ecoyle/repos/verilog-ethernet/tb/crc/crc_tb.py" lineno="14" time="0.010536670684814453" sim_time_ns="0.0" ratio_time="0.0">
+      <failure error_type="ValueError" error_msg="Int value (29457) out of range for assignment of 8-bit signal ('i_data')" />
+    </testcase>
+  </testsuite>
+</testsuites>
