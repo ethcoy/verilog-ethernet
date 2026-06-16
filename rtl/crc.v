@@ -22,30 +22,6 @@ reg [c_GEN_POLY_WIDTH - 1:0] t_crc;
 
 assign o_crc = t_crc;
 
-//`ifdef c_REVERSE_OUTPUT_BIT_ORDER
-//    `ifdef c_COMPLEMENT_OUTPUT
-//        genvar i;
-//        generate
-//            for (i = 0; i < c_GEN_POLY_WIDTH; i = i + 1) begin
-//                assign o_crc[i] = ~r_crc[c_GEN_POLY_WIDTH - 1 - i];
-//            end
-//        endgenerate
-//    `else
-//        genvar i;
-//        generate
-//            for (i = 0; i < c_GEN_POLY_WIDTH; i = i + 1) begin
-//                assign o_crc[i] = r_crc[c_GEN_POLY_WIDTH - 1 - i];
-//            end
-//        endgenerate
-//    `endif
-//`else
-//    `ifdef c_COMPLEMENT_OUTPUT
-//        assign o_crc = ~r_crc;
-//    `else
-//        assign o_crc = r_crc;
-//    `endif
-//`endif
-
 function [c_GEN_POLY_WIDTH - 1:0] crc (input [c_DATA_WIDTH - 1:0] i_data, input [c_GEN_POLY_WIDTH - 1:0] o_crc);
     reg [0:c_GEN_POLY_WIDTH - 1] A [0:c_GEN_POLY_WIDTH - 1];
     reg [0:c_GEN_POLY_WIDTH - 1] T0 [0:c_GEN_POLY_WIDTH - 1];
