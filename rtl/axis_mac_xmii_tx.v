@@ -1,4 +1,4 @@
-module axis_mac_mii_tx #(
+module axis_mac_xmii_tx #(
     parameter DATA_WIDTH = 8,
     parameter XMII_WIDTH = 4,
     parameter ENABLE_PADDING = 1,
@@ -20,7 +20,7 @@ module axis_mac_mii_tx #(
     input wire xmii_tx_clk,
     output wire [XMII_WIDTH - 1:0] xmii_txd,
     output wire xmii_tx_en,
-    output wire xmii_tx_er,
+    output wire xmii_tx_er
 );
 
 /*
@@ -42,12 +42,12 @@ Receive everything with a little-endian bit order and handle flipping it before 
 localparam STATE_ETHERNET_IDLE = 0;
 localparam STATE_ETHERNET_PREAMBLE_AND_SFD = 1;
 localparam STATE_ETHERNET_HEADER_AND_PAYLOAD = 2;
-localparam STATE_ETHERNET_PAD = 3;
-localparam STATE_ETHERNET_FCS = 4;
-localparam STATE_ETHERNET_IPG = 5;
+localparam STATE_ETHERNET_HEADER_AND_PAYLOAD_ONE = 3;
+localparam STATE_ETHERNET_PAD = 4;
+localparam STATE_ETHERNET_FCS = 5;
+localparam STATE_ETHERNET_IPG = 6;
 
 reg [4:0] state_reg = STATE_ETHERNET_IDLE;
-reg [4:0] state_next;
 
 reg [DATA_WIDTH - 1:0] s_axis_tdata_reg = {DATA_WIDTH{1'b0}};
 reg [DATA_WIDTH - 1:0] s_axis_tdata_buff_reg = {DATA_WIDTH{1'b0}};
@@ -60,25 +60,28 @@ reg [XMII_WIDTH - 1:0] xmii_txd_reg = {XMII_WIDTH{1'b0}};
 reg xmii_tx_en_reg = 1'b0;
 
 assign xmii_txd = xmii_txd_reg;
+assign xmii_tx_en = xmii_tx_en_reg;
 
 reg [7:0] eth_pre_reg = 8'hAA;
 reg [7:0] eth_sfd_reg = 8'hAB;
 
 reg [15:0] count_reg = 16'b0;
-reg [15:0] byte_count_reg = 16'b0;
+reg [15:0] byte_count_reg = 16'd4;
 reg [15:0] partial_byte_count_reg = 16'b0;
 
 wire crc_valid_wire;
 
-assign crc_valid_wire = count_reg == 16'b0 && state_reg == STATE_ETHERNET_HEADER_AND_PAYLOAD;
+assign crc_valid_wire = s_axis_tvalid && s_axis_tready;
 
-wire crc_wire;
+wire [31:0] crc_wire;
+
+reg [31:0] crc_reg = 32'b0;
 
 crc #(
     .c_DATA_WIDTH(8),
     .c_GEN_POLY(32'h04c11db7),
     .c_GEN_POLY_WIDTH(32),
-    .c_INITIAL_CRC_VALUE(32'b1),
+    .c_INITIAL_CRC_VALUE({32{1'b1}}),
     .c_REVERSE_INPUT_BIT_ORDER(1),
     .c_REVERSE_OUTPUT_BIT_ORDER(1),
     .c_COMPLEMENT_OUTPUT(1)
@@ -86,14 +89,19 @@ crc #(
 crc_inst (
     .i_rst (i_rst),
     .i_clk (xmii_tx_clk),
-    .i_data (s_axis_tdata_reg),
+    .i_data (s_axis_tdata),
     .i_data_valid (crc_valid_wire),
     .o_crc (crc_wire)
 );
 
-localparam COUNT_TARGET1 = 7*8/XMII_WIDTH - 1;
-localparam COUNT_TARGET2 = 8*8/XMII_WIDTH - 1;
+localparam COUNT_TARGET1 = 7*8/XMII_WIDTH;
+localparam COUNT_TARGET2 = 8*8/XMII_WIDTH;
 localparam COUNT_TARGET3 = DATA_WIDTH/XMII_WIDTH;
+localparam COUNT_TARGET4 = 4*8/XMII_WIDTH;
+
+integer i = 0;
+
+reg send_last_reg = 1'b0;
 
 always @(posedge xmii_tx_clk) begin
     case (state_reg)
@@ -101,7 +109,6 @@ always @(posedge xmii_tx_clk) begin
             s_axis_tready_reg <= 1'b1;
             if (s_axis_tvalid && s_axis_tready) begin
                 s_axis_tdata_reg <= s_axis_tdata;
-                byte_count_reg <= 3'd4;
                 state_reg <= STATE_ETHERNET_PREAMBLE_AND_SFD;
             end
         end
@@ -114,16 +121,18 @@ always @(posedge xmii_tx_clk) begin
                 xmii_txd_reg <= eth_sfd_reg[XMII_WIDTH - 1:0];
                 eth_sfd_reg <= {eth_sfd_reg[XMII_WIDTH - 1:0], eth_sfd_reg[7:8 - XMII_WIDTH]};
 
-                if (count_reg == COUNT_TARGET2) begin
+                if (count_reg == COUNT_TARGET2 - 1) begin
                     count_reg <= 16'b0;
                     state_reg <= STATE_ETHERNET_HEADER_AND_PAYLOAD;
+                    if (s_axis_tlast_reg) begin
+                        state_reg <= STATE_ETHERNET_HEADER_AND_PAYLOAD_ONE;
+                    end
                 end
             end
 
             if (s_axis_tvalid && s_axis_tready) begin
                 s_axis_tdata_buff_reg <= s_axis_tdata;
                 s_axis_tready_reg <= 1'b0;
-                state_reg <= STATE_ETHERNET_PREAMBLE_AND_SFD;
             end
         end
 
@@ -136,37 +145,88 @@ always @(posedge xmii_tx_clk) begin
                 s_axis_tdata_reg <= s_axis_tdata_buff_reg;
                 s_axis_tready_reg <= 1'b1;
                 count_reg <= 16'b0;
+
                 if (s_axis_tlast_reg) begin
+                    send_last_reg <= 1'b1;    
                     s_axis_tready_reg <= 1'b0;
+                end
+
+                if (send_last_reg) begin
+                    send_last_reg <= 1'b0;
                     state_reg <= STATE_ETHERNET_FCS;
                     if (byte_count_reg < MIN_FRAME_LENGTH - 1) begin
                         state_reg <= STATE_ETHERNET_PAD;
+                    end else begin
+                        count_reg <= count_reg + 1'b1;
+                        crc_reg <= crc_wire << XMII_WIDTH;
+                        for (i = 0; i < XMII_WIDTH; i = i + 1) begin
+                            xmii_txd_reg[i] <= crc_wire[31 - i];
+                        end
                     end
                 end
             end
 
             if (s_axis_tvalid && s_axis_tready) begin
                 s_axis_tdata_buff_reg <= s_axis_tdata;
-                s_axis_tready_reg <= 1'b0;
-                s_axis_tlast_reg <= s_axis_tlast;            
+                s_axis_tready_reg <= 1'b0;     
+            end
+        end
+
+        STATE_ETHERNET_HEADER_AND_PAYLOAD_ONE: begin
+            count_reg <= count_reg + 1'b1;
+            xmii_txd_reg <= s_axis_tdata_reg[XMII_WIDTH - 1:0];
+            s_axis_tdata_reg <= s_axis_tdata_reg >> XMII_WIDTH;
+            
+            if (count_reg == COUNT_TARGET3 - 1) begin
+                s_axis_tdata_reg <= s_axis_tdata_buff_reg;
+                count_reg <= 16'b0;
+                crc_reg <= crc_wire;
+                state_reg <= STATE_ETHERNET_FCS;
+                if (byte_count_reg < MIN_FRAME_LENGTH - 1) begin
+                    state_reg <= STATE_ETHERNET_PAD;
+                end
             end
         end
 
         STATE_ETHERNET_PAD: begin
             xmii_txd_reg <= {XMII_WIDTH{1'b0}};
+            // use count_reg instead of partial_byte_count_reg?
             if (byte_count_reg >= MIN_FRAME_LENGTH - 1 && partial_byte_count_reg == DATA_WIDTH/XMII_WIDTH - 1) begin
+                count_reg <= count_reg + 1'b1;
+                crc_reg <= crc_reg << XMII_WIDTH;
+                for (i = 0; i < XMII_WIDTH; i = i + 1) begin
+                    xmii_txd_reg[i] <= crc_reg[31 - i];
+                end
                 state_reg <= STATE_ETHERNET_FCS;
+            end
+
+            if (partial_byte_count_reg == DATA_WIDTH/XMII_WIDTH - 1) begin
+                byte_count_reg <= byte_count_reg + 1'b1;
             end
         end
 
         STATE_ETHERNET_FCS: begin
             count_reg <= count_reg + 1'b1;
-            xmii_txd_reg <= crc_wire[XMII_WIDTH - 1:0];     
+            crc_reg <= crc_reg << XMII_WIDTH;
+            for (i = 0; i < XMII_WIDTH; i = i + 1) begin
+                xmii_txd_reg[i] <= crc_reg[31 - i];
+            end
+
+            if (count_reg == COUNT_TARGET4 - 1) begin
+                state_reg <= STATE_ETHERNET_IPG;
+            end
+        end
+
+        STATE_ETHERNET_IPG: begin
+            xmii_tx_en_reg <= 1'b0;
+            byte_count_reg <= 3'd4;
+            state_reg <= STATE_ETHERNET_IDLE;
         end
     endcase
 
     if (s_axis_tvalid && s_axis_tready) begin
         byte_count_reg <= byte_count_reg + (DATA_WIDTH >> 2'd3);
+        s_axis_tlast_reg <= s_axis_tlast;  
     end
 
     if (xmii_tx_en) begin
@@ -175,17 +235,6 @@ always @(posedge xmii_tx_clk) begin
             partial_byte_count_reg <= 16'b0;
         end
     end
-end
-
-always @(posedge rmii_tx_clk) begin
-    state_reg <= state_next;
-    s_axis_tdata_reg <= s_axis_tdata_next;
-    s_axis_tready_reg <= s_axis_tready_next;
-    s_axis_tlast_reg <= s_axis_tlast_next;
-    xmii_txd_reg <= rmii_txd_next;
-    xmii_tx_en_reg <= rmii_tx_en_next;
-    count_reg <= count_next;
-
 end
 
 endmodule
