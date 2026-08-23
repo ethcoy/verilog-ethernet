@@ -105,6 +105,8 @@ integer i = 0;
 
 reg send_last_reg = 1'b0;
 
+// Rewrite this to remove buffering of data? Feel like its useless and adds additional states
+
 always @(posedge xmii_tx_clk) begin
     case (state_reg)
         STATE_ETHERNET_IDLE: begin
