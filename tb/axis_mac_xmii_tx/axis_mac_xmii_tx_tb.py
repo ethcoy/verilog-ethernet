@@ -51,11 +51,11 @@ class mii_sink:
         self.mii_txd = mii_txd
         self.mii_tx_en = mii_tx_en
         self.packets_received = []
-        self.bytes_received = []
         cocotb.start_soon(Clock(self.mii_tx_clk, 20, unit="ns").start())
         cocotb.start_soon(self.__mii_sink__())
 
     async def __mii_sink__(self):
+        bytes_received = []
         count = 0
         receiving = False
         while (True):
@@ -68,13 +68,13 @@ class mii_sink:
                 if (count == 2):
                     count = 0
                     byte = byte | (int(self.mii_txd.value) << 4)
-                    self.bytes_received.append(byte)
+                    bytes_received.append(byte)
             else:
                 count = 0
                 if (receiving):
                     receiving = False
-                    # for 
-                    self.packets_received.append(self.bytes_received)
+                    self.packets_received.append(bytes_received)
+                    bytes_received = []
 
 @cocotb.test()
 async def test(dut):
@@ -89,15 +89,14 @@ async def test(dut):
         data += [i]
 
     axis_src.send_nowait(data)
+    axis_src.send_nowait(data)
 
-    # for i in range(200):
-    #     await RisingEdge(dut.xmii_tx_clk)
-        # if (dut.xmii_tx_en.value):
-        #     print(hex(int(dut.xmii_txd.value)))
+    await Timer(8000, unit='ns')
 
-    await Timer(3000, unit='ns')
-
-    print([hex(x) for x in mii_snk.packets_received[0]])
+    for i in range(len(mii_snk.packets_received)):
+        print([hex(x) for x in mii_snk.packets_received[i]])
+        print(len(mii_snk.packets_received[i]))
+        print()
 
     # Be sure to place meaningful assertions in your tests. This is just here as an example of a test that will pass.
     assert 1 == 1

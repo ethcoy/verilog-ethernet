@@ -48,7 +48,7 @@ reg [c_GEN_POLY_WIDTH - 1:0] t_crc;
 
 assign o_crc = t_crc;
 
-function [c_GEN_POLY_WIDTH - 1:0] crc (input [c_DATA_WIDTH - 1:0] i_data, input [c_GEN_POLY_WIDTH - 1:0] o_crc);
+function [c_GEN_POLY_WIDTH - 1:0] crc (input [c_DATA_WIDTH - 1:0] i_data, input [c_GEN_POLY_WIDTH - 1:0] i_crc);
     reg [0:c_GEN_POLY_WIDTH - 1] A [0:c_GEN_POLY_WIDTH - 1];
     reg [0:c_GEN_POLY_WIDTH - 1] T0 [0:c_GEN_POLY_WIDTH - 1];
     reg [0:c_GEN_POLY_WIDTH - 1] T1 [0:c_GEN_POLY_WIDTH - 1];
@@ -115,7 +115,7 @@ function [c_GEN_POLY_WIDTH - 1:0] crc (input [c_DATA_WIDTH - 1:0] i_data, input 
             for (k = 0; k < c_GEN_POLY_WIDTH; k = k + 1) begin
                 T0[j][k] = T1[j][k];
                 T1[j][k] = 0;
-                S[c_GEN_POLY_WIDTH - 1 - j] = T0[j][k] * r_crc[c_GEN_POLY_WIDTH - 1 - k] ^ S[c_GEN_POLY_WIDTH - 1 - j];
+                S[c_GEN_POLY_WIDTH - 1 - j] = T0[j][k] * i_crc[c_GEN_POLY_WIDTH - 1 - k] ^ S[c_GEN_POLY_WIDTH - 1 - j];
             end
         end
                           

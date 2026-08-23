@@ -1,7 +1,6 @@
 module axis_mac_xmii_tx #(
     parameter DATA_WIDTH = 8,
     parameter XMII_WIDTH = 4,
-    parameter ENABLE_PADDING = 1,
     parameter MIN_FRAME_LENGTH = 64
 ) (
     input wire i_rst,
@@ -77,6 +76,8 @@ wire [31:0] crc_wire;
 
 reg [31:0] crc_reg = 32'b0;
 
+reg crc_rst_reg = 1'b0;
+
 crc #(
     .c_DATA_WIDTH(8),
     .c_GEN_POLY(32'h04c11db7),
@@ -87,7 +88,7 @@ crc #(
     .c_COMPLEMENT_OUTPUT(1)
 )
 crc_inst (
-    .i_rst (i_rst),
+    .i_rst (crc_rst_reg),
     .i_clk (xmii_tx_clk),
     .i_data (s_axis_tdata),
     .i_data_valid (crc_valid_wire),
@@ -98,6 +99,7 @@ localparam COUNT_TARGET1 = 7*8/XMII_WIDTH;
 localparam COUNT_TARGET2 = 8*8/XMII_WIDTH;
 localparam COUNT_TARGET3 = DATA_WIDTH/XMII_WIDTH;
 localparam COUNT_TARGET4 = 4*8/XMII_WIDTH;
+localparam COUNT_TARGET5 = 12*8/XMII_WIDTH;
 
 integer i = 0;
 
@@ -107,6 +109,7 @@ always @(posedge xmii_tx_clk) begin
     case (state_reg)
         STATE_ETHERNET_IDLE: begin
             s_axis_tready_reg <= 1'b1;
+            crc_rst_reg <= 1'b0;
             if (s_axis_tvalid && s_axis_tready) begin
                 s_axis_tdata_reg <= s_axis_tdata;
                 state_reg <= STATE_ETHERNET_PREAMBLE_AND_SFD;
@@ -152,17 +155,12 @@ always @(posedge xmii_tx_clk) begin
                 end
 
                 if (send_last_reg) begin
+                    crc_reg <= crc_wire;
                     send_last_reg <= 1'b0;
                     state_reg <= STATE_ETHERNET_FCS;
                     if (byte_count_reg < MIN_FRAME_LENGTH - 1) begin
                         state_reg <= STATE_ETHERNET_PAD;
-                    end else begin
-                        count_reg <= count_reg + 1'b1;
-                        crc_reg <= crc_wire << XMII_WIDTH;
-                        for (i = 0; i < XMII_WIDTH; i = i + 1) begin
-                            xmii_txd_reg[i] <= crc_wire[31 - i];
-                        end
-                    end
+                    end 
                 end
             end
 
@@ -190,13 +188,7 @@ always @(posedge xmii_tx_clk) begin
 
         STATE_ETHERNET_PAD: begin
             xmii_txd_reg <= {XMII_WIDTH{1'b0}};
-            // use count_reg instead of partial_byte_count_reg?
-            if (byte_count_reg >= MIN_FRAME_LENGTH - 1 && partial_byte_count_reg == DATA_WIDTH/XMII_WIDTH - 1) begin
-                count_reg <= count_reg + 1'b1;
-                crc_reg <= crc_reg << XMII_WIDTH;
-                for (i = 0; i < XMII_WIDTH; i = i + 1) begin
-                    xmii_txd_reg[i] <= crc_reg[31 - i];
-                end
+            if (byte_count_reg >= MIN_FRAME_LENGTH) begin
                 state_reg <= STATE_ETHERNET_FCS;
             end
 
@@ -213,14 +205,20 @@ always @(posedge xmii_tx_clk) begin
             end
 
             if (count_reg == COUNT_TARGET4 - 1) begin
+                count_reg <= 16'b0;
                 state_reg <= STATE_ETHERNET_IPG;
             end
         end
 
         STATE_ETHERNET_IPG: begin
+            count_reg <= count_reg + 1'b1;
             xmii_tx_en_reg <= 1'b0;
             byte_count_reg <= 3'd4;
-            state_reg <= STATE_ETHERNET_IDLE;
+            crc_rst_reg <= 1'b1;
+            if (count_reg == COUNT_TARGET5 - 1) begin
+                count_reg <= 16'b0;
+                state_reg <= STATE_ETHERNET_IDLE;
+            end
         end
     endcase
 
