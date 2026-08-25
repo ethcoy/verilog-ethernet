@@ -199,6 +199,8 @@ always @(posedge xmii_tx_clk) begin
             end
         end
 
+        // Move the checksum to another layer that isnt going to have this higher frequency clock
+        // This module should be called axis_mac_phy_interface and have another module called axis_mac
         STATE_ETHERNET_FCS: begin
             count_reg <= count_reg + 1'b1;
             crc_reg <= crc_reg << XMII_WIDTH;

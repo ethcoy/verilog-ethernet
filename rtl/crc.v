@@ -25,7 +25,7 @@ SOFTWARE.
 */
 
 module crc #(
-    parameter c_DATA_WIDTH = 8,
+    parameter c_DATA_WIDTH = 32,
     parameter c_GEN_POLY = 32'h04c11db7,
     parameter c_GEN_POLY_WIDTH = 32,
     parameter c_INITIAL_CRC_VALUE = {c_GEN_POLY_WIDTH{1'b1}},

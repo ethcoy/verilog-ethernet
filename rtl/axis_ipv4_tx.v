@@ -73,9 +73,12 @@ localparam HEADER_FULL_TRANSACTIONS = 160/DATA_WIDTH;
 localparam HEADER_BYTES_ENABLED_LAST_TRANSACTION_WHEN_MORE = (160%DATA_WIDTH)/8;
 localparam HEADER_BYTES_ENABLED_LAST_TRANSACTION_WHEN_LESS = (DATA_WIDTH%160)/8;
 
+localparam HEADER_SHIFT_LEFT_LESS = DATA_WIDTH - 160;
+
 localparam STATE_IPV4_IDLE = 0;
 localparam STATE_IPV4_CHECKSUM = 1;
 localparam STATE_IPV4_HEADER = 2;
+localparam STATE_IPV4_DATA = 3;
 
 reg [3:0] state_reg = STATE_IPV4_IDLE;
 
@@ -120,38 +123,46 @@ always @(posedge i_clk) begin
                     if (ipv4_checksum_reg <= 2**16 - 1) begin
                         count_reg <= 16'b0;
                         s_axis_ipv4_header_reg[79:64] <= ~ipv4_checksum_reg;
+                        m_axis_ipv4_tdata_reg <= s_axis_ipv4_header_reg[159:160 - DATA_WIDTH];
+                        m_axis_ipv4_tvalid_reg <= 1'b1;
+
+                        if (HEADER_IS_LESS) begin
+                            m_axis_ipv4_tdata_reg <= s_axis_ipv4_header_reg;
+                            m_axis_ipv4_tkeep_reg <= (1'b1 << HEADER_BYTES_ENABLED_LAST_TRANSACTION_WHEN_LESS) - 1'b1;
+                        end
+
+                        if (HEADER_IS_MULTIPLE) begin
+                            m_axis_ipv4_tkeep_reg <= {KEEP_WIDTH{1'b1}};
+                        end
                         state_reg <= STATE_IPV4_HEADER;
                     end
                 end
             endcase
         end
 
-    STATE_IPV4_HEADER: begin
-        m_axis_ipv4_tdata_reg <= s_axis_ipv4_header_reg[159:160 - DATA_WIDTH];
-        m_axis_ipv4_tvalid_reg <= 1'b1;
+        STATE_IPV4_HEADER: begin
+            if (m_axis_ipv4_tvalid && m_axis_ipv4_tready) begin
+                s_axis_ipv4_header_reg <= s_axis_ipv4_header_reg << DATA_WIDTH;
+                count_reg <= count_reg + 1'b1;
 
-        if (HEADER_IS_LESS) begin
-            m_axis_ipv4_tdata_reg <= s_axis_ipv4_header_reg;
-            m_axis_ipv4_tkeep_reg <= 1'b1 << HEADER_BYTES_ENABLED_LAST_TRANSACTION_WHEN_LESS;
-        end
+                if (count_reg == HEADER_FULL_TRANSACTIONS) begin
+                    
+                end
 
-        if (HEADER_IS_MULTIPLE) begin
-            m_axis_ipv4_tkeep_reg <= {KEEP_WIDTH{1'b1}};
-        end
-        
-        if (m_axis_ipv4_tvalid && m_axis_ipv4_tready) begin
-            s_axis_ipv4_header_reg <= s_axis_ipv4_header_reg << DATA_WIDTH;
-            count_reg <= count_reg + 1'b1;
-            
-            if (count_reg == HEADER_FULL_TRANSACTIONS) begin
+                if (HEADER_IS_MULTIPLE) begin
                 
-            end
-
-            if (HEADER_IS_MULTIPLE) begin
+                end
             
+                if (HEADER_IS_LESS) begin
+                    state_reg <= STATE_IPV4_HEADER;
+                end
             end
         end
-    end
+
+        STATE_IPV4_DATA: begin
+            
+
+        end
 
     endcase
 
