@@ -35,13 +35,13 @@ async def test_data_io(dut):
     axis_snk = axis_sink(dut.i_clk, dut.m_axis_tdata, dut.m_axis_tvalid, dut.m_axis_tready, dut.m_axis_tlast)
 
     data = []
-    for i in range(10):
+    for i in range(46):
         print(hex(i))
         data += [i]
 
     axis_src.send_nowait(data)
 
-    for i in range(1000):
+    for i in range(200):
         await RisingEdge(dut.i_clk)
 
 def test_runner():
