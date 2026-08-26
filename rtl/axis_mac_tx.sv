@@ -1,4 +1,4 @@
-module axis_mac #(
+module axis_mac_tx #(
     parameter DATA_WIDTH = 8,
     parameter MIN_FRAME_LENGTH = 64
 ) (
