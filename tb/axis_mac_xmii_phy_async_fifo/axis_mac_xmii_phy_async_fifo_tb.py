@@ -37,8 +37,8 @@ async def controller(dut):
 
 @cocotb.test()
 async def test_data_io_and_control(dut):
-    cocotb.start_soon(Clock(dut.s_clk, 10, unit="ns").start())
-    cocotb.start_soon(Clock(dut.m_clk, 20, unit="ns").start())
+    cocotb.start_soon(Clock(dut.s_clk, 20, unit="ns").start())
+    cocotb.start_soon(Clock(dut.m_clk, 1, unit="ns").start())
 
     await RisingEdge(dut.s_clk)
     await RisingEdge(dut.m_clk)
@@ -58,10 +58,20 @@ async def test_data_io_and_control(dut):
     axis_src.send_nowait(data)
     axis_src.send_nowait(data)
 
+    # axis_src.
+
 
     for i in range(100):
         print(i)
-        await RisingEdge(dut.m_clk)
+        await RisingEdge(dut.s_clk)
+
+    # axis_snk = axis_sink(dut.m_clk, dut.m_axis_tdata, dut.m_axis_tvalid, dut.m_axis_tready, dut.m_axis_tlast)
+
+    # cocotb.start_soon(controller(dut))
+
+    # for i in range(100):
+    #     print(i)
+    #     await RisingEdge(dut.s_clk)
 
     data_sent = [int(x) for x in axis_src.s_axis_tdata_sent]
     last_sent = [int(x) for x in axis_src.s_axis_tlast_sent]

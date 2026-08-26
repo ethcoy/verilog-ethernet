@@ -33,9 +33,8 @@ module crc #(
     parameter c_REVERSE_OUTPUT_BIT_ORDER = 1,
     parameter c_COMPLEMENT_OUTPUT = 1
 ) (
-    input wire i_rst,
-
     input wire i_clk,
+    input wire i_rst,
 
     input wire [c_DATA_WIDTH - 1:0] i_data,
     input wire i_data_valid,

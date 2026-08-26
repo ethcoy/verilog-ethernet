@@ -49,6 +49,8 @@ module axis_mac_xmii_phy_async_fifo #(
     output wire o_packet_ready
 );
 
+wire s_axis_tready_inst1;
+
 axis_async_fifo #(
     .c_DATA_WIDTH(c_DATA_WIDTH),
     .c_FIFO_DEPTH(c_FIFO_DEPTH)
@@ -60,7 +62,7 @@ axis_async_fifo_inst1 (
     .m_rst(m_rst),
     .s_axis_tdata(s_axis_tdata),
     .s_axis_tvalid(s_axis_tvalid),
-    .s_axis_tready(s_axis_tready),
+    .s_axis_tready(s_axis_tready_inst1),
     .s_axis_tlast(s_axis_tlast),
     .m_axis_tdata(m_axis_tdata),
     .m_axis_tvalid(m_axis_tvalid),
@@ -70,14 +72,19 @@ axis_async_fifo_inst1 (
 
 localparam c_MAX_PACKETS_BUFFERED = c_FIFO_DEPTH/c_PACKET_SIZE > 3 ? c_FIFO_DEPTH/c_PACKET_SIZE : 3;
 
+wire s_axis_tready_inst2;
+
 wire m_axis_tvalid_inst2;
 wire m_axis_tlast_inst2;
 
-assign o_packet_ready = m_axis_tvalid_inst2 && m_axis_tlast_inst2;
+assign s_axis_tready = s_axis_tready_inst1 && s_axis_tready_inst2;
+
+assign o_packet_ready = m_axis_tvalid_inst2;
 
 axis_async_fifo #(
     .c_DATA_WIDTH(1),
-    .c_FIFO_DEPTH(c_MAX_PACKETS_BUFFERED)
+    // .c_FIFO_DEPTH(c_MAX_PACKETS_BUFFERED)
+    .c_FIFO_DEPTH(c_FIFO_DEPTH)
 ) 
 axis_async_fifo_inst2 (
     .s_clk(s_clk),
@@ -86,12 +93,12 @@ axis_async_fifo_inst2 (
     .m_rst(m_rst),
     .s_axis_tdata(),
     .s_axis_tvalid(s_axis_tvalid && s_axis_tlast),
-    .s_axis_tready(),
+    .s_axis_tready(s_axis_tready_inst2),
     .s_axis_tlast(s_axis_tlast),
     .m_axis_tdata(),
     .m_axis_tvalid(m_axis_tvalid_inst2),
     .m_axis_tready(~i_xmii_phy_busy),
-    .m_axis_tlast(m_axis_tlast_inst2)
+    .m_axis_tlast()
 );
 
 endmodule
