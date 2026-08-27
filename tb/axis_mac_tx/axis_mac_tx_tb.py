@@ -48,13 +48,13 @@ def test_runner():
     sim = os.getenv("SIM", "icarus")
 
     # runner.build and runner.test specific parameters
-    hdl_toplevel = "axis_mac"
+    hdl_toplevel = "axis_mac_tx"
     waves = True
     timescale = ("1ns", "1ps")
 
     # runner.build specific parameters
     sources = []
-    sources += ["./../../rtl/axis_mac.sv"]
+    sources += ["./../../rtl/axis_mac_tx.sv"]
     sources += ["./../../rtl/crc.v"]
 
     always = True
