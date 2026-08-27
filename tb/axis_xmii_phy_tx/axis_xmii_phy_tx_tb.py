@@ -51,6 +51,15 @@ class mii_sink:
                     self.packets_received.append(bytes_received)
                     bytes_received = []
 
+async def send_data(dut, src, data):
+    await RisingEdge(dut.xmii_tx_clk)
+    src.send_nowait(data)
+    dut.i_packet_ready.value = 1
+    await RisingEdge(dut.xmii_tx_clk)
+    while (not (dut.i_packet_ready.value and (not dut.o_xmii_phy_tx_busy.value))):
+        await RisingEdge(dut.xmii_tx_clk)
+    dut.i_packet_ready.value = 0
+
 @cocotb.test()
 async def test_data_io(dut):
     axis_src = axis_source(dut.xmii_tx_clk, dut.s_axis_tdata, dut.s_axis_tvalid, dut.s_axis_tready, dut.s_axis_tlast)
@@ -60,26 +69,34 @@ async def test_data_io(dut):
     await RisingEdge(dut.xmii_tx_clk)
     await RisingEdge(dut.xmii_tx_clk)
 
-    dut.i_packet_ready.value = 1
-
     data = []
-    l1 = 30
-    for i in range(l1):
+    l = 50
+    for i in range(l):
         data += [random.randint(0, 255)]
 
-    axis_src.send_nowait(data)
+    await send_data(dut, axis_src, data)
 
-    for i in range(l1*5):
+    for i in range(l*5):
         await RisingEdge(dut.xmii_tx_clk)
 
     data = []
-    l2 = 50
-    for i in range(l2):
+    l = 100
+    for i in range(l):
         data += [random.randint(0, 255)]
 
-    axis_src.send_nowait(data)
+    await send_data(dut, axis_src, data)
 
-    for i in range(l2*5):
+    for i in range(l*5):
+        await RisingEdge(dut.xmii_tx_clk)
+
+    data = []
+    l = 323
+    for i in range(l):
+        data += [random.randint(0, 255)]
+
+    await send_data(dut, axis_src, data)
+
+    for i in range(l*5):
         await RisingEdge(dut.xmii_tx_clk)
 
     data_sent = [int(x) for x in axis_src.s_axis_tdata_sent]
