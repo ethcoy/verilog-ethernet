@@ -24,24 +24,57 @@ from cocotb.simtime import get_sim_time
 async def test_data_io(dut):
     cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
 
-    dut.s_axis_eth_destination_addr.value = 0xEEEEEEEEEEEE
-    dut.s_axis_eth_source_addr.value = 0xFFFFFFFFFFFF
-    dut.s_axis_eth_type.value = 0xAAAA
-    dut.s_axis_eth_tvalid.value = 1
+    axis_src_eth_dest = axis_source(dut.i_clk, dut.s_axis_eth_destination_addr, dut.s_axis_eth_tvalid, dut.s_axis_eth_tready)
+    axis_src_eth_src = axis_source(dut.i_clk, dut.s_axis_eth_source_addr, dut.s_axis_eth_tvalid, dut.s_axis_eth_tready)
+    axis_src_eth_type = axis_source(dut.i_clk, dut.s_axis_eth_type, dut.s_axis_eth_tvalid, dut.s_axis_eth_tready)
 
-    await RisingEdge(dut.i_clk)
+    eth_dest = [0x1, 0x2, 0x3, 0x4, 0x5]
+    eth_src = [0x5, 0x4, 0x3, 0x2, 0x1]
+    eth_type = [0x11, 0x22, 0x33, 0x44, 0x55]
+
+    axis_src_eth_dest.send_nowait(eth_dest)
+    axis_src_eth_src.send_nowait(eth_src)
+    axis_src_eth_type.send_nowait(eth_type)
 
     axis_src = axis_source(dut.i_clk, dut.s_axis_tdata, dut.s_axis_tvalid, dut.s_axis_tready, dut.s_axis_tlast)
     axis_snk = axis_sink(dut.i_clk, dut.m_axis_tdata, dut.m_axis_tvalid, dut.m_axis_tready, dut.m_axis_tlast)
 
     data = []
-    for i in range(46):
-        print(hex(i))
+    # l = 1
+    # for i in range(l):
+    data += [5]
+
+    axis_src.send_nowait(data)
+
+    data = []
+    l = 10
+    for i in range(l):
         data += [i]
 
     axis_src.send_nowait(data)
 
-    for i in range(200):
+    data = []
+    l = 43
+    for i in range(l):
+        data += [i]
+
+    axis_src.send_nowait(data)
+
+    data = []
+    l = 100
+    for i in range(l):
+        data += [i]
+
+    axis_src.send_nowait(data)
+
+    data = []
+    l = 132
+    for i in range(l):
+        data += [i]
+
+    axis_src.send_nowait(data)
+
+    for i in range(2000):
         await RisingEdge(dut.i_clk)
 
 def test_runner():

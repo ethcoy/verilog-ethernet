@@ -70,6 +70,13 @@ async def test_data_io(dut):
     await RisingEdge(dut.xmii_tx_clk)
 
     data = []
+    l = 1
+    for i in range(l):
+        data += [random.randint(0, 255)]
+
+    await send_data(dut, axis_src, data)
+
+    data = []
     l = 50
     for i in range(l):
         data += [random.randint(0, 255)]
