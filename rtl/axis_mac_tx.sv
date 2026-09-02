@@ -5,17 +5,20 @@ module axis_mac_tx #(
     input wire logic i_clk,
     input wire logic i_rst,
 
+    // AXI-stream Ethernet header interface
     input wire logic [47:0] s_axis_eth_destination_addr,
     input wire logic [47:0] s_axis_eth_source_addr,
     input wire logic [15:0] s_axis_eth_type,
     input wire logic s_axis_eth_tvalid,
     output wire logic s_axis_eth_tready,
 
+    // AXI-stream data input interface
     input wire logic [DATA_WIDTH - 1:0] s_axis_tdata,
     input wire logic s_axis_tvalid,
     output wire logic s_axis_tready,
     input wire logic s_axis_tlast,
 
+    // AXI-stream data output interface
     output wire logic [DATA_WIDTH - 1:0] m_axis_tdata,
     output wire logic m_axis_tvalid,
     input wire logic m_axis_tready,
