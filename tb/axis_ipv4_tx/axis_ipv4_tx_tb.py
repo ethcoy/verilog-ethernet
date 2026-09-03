@@ -21,7 +21,7 @@ from helper import axis_source, axis_sink
 from cocotb.simtime import get_sim_time
 
 async def send_ipv4_packet(dut, version, ihl, dscp, ecn, length, identification, flags, fragment_offset, 
-                           ttl, protocol, source_ip, dest_ip, data, axis_source):
+                           ttl, protocol, source_ip, dest_ip, data):
     version = version & 0xF
     ihl = ihl & 0xF
     dscp = dscp & 0x3F
@@ -35,6 +35,7 @@ async def send_ipv4_packet(dut, version, ihl, dscp, ecn, length, identification,
     source_ip = source_ip & 0xFFFFFFFF
     dest_ip = dest_ip & 0xFFFFFFFF
 
+    await RisingEdge(dut.i_clk)
     dut.s_axis_ipv4_version.value = version
     dut.s_axis_ipv4_ihl.value = ihl
     dut.s_axis_ipv4_dscp.value = dscp
@@ -47,13 +48,16 @@ async def send_ipv4_packet(dut, version, ihl, dscp, ecn, length, identification,
     dut.s_axis_ipv4_protocol.value = protocol
     dut.s_axis_ipv4_source_addr.value = source_ip
     dut.s_axis_ipv4_destination_addr.value = dest_ip
-    axis_source.send_nowait(data)
-    await RisingEdge(dut.i_clk)
     dut.s_axis_ipv4_header_tvalid.value = 1
     await RisingEdge(dut.i_clk)
     while (not (dut.s_axis_ipv4_header_tvalid.value and dut.s_axis_ipv4_header_tready.value)):
         await RisingEdge(dut.i_clk)
     dut.s_axis_ipv4_header_tvalid.value = 0
+
+    data = [int(x & 0xFF) for x in data]
+    axis_src = axis_source(dut.i_clk, dut.s_axis_tdata, dut.s_axis_tvalid, dut.s_axis_tready, dut.s_axis_tlast)
+    data_bytes = await axis_src.send_wait(data)
+
     checksum = 0
     checksum += ((version << 12) | (ihl << 8) | (dscp << 2) | (ecn))
     checksum += length
@@ -67,6 +71,7 @@ async def send_ipv4_packet(dut, version, ihl, dscp, ecn, length, identification,
     while (checksum >= 2**16):
         checksum = (checksum & 0xFFFF) + (checksum >> 16)
     checksum = (~checksum) & 0xFFFF
+
     header = [version, ihl, dscp, ecn, length, identification, flags, fragment_offset, ttl, protocol, checksum, source_ip, dest_ip]
     header_bytes = [(version << 4) | ihl, (dscp << 2) | ecn, (length >> 8) & 0xFF,
                     length & 0xFF, (identification >> 8) & 0xFF, identification & 0xFF, 
@@ -75,44 +80,21 @@ async def send_ipv4_packet(dut, version, ihl, dscp, ecn, length, identification,
                     (source_ip >> 8) & 0xFF, source_ip & 0xFF, (dest_ip >> 24) & 0xFF, (dest_ip >> 16) & 0xFF,
                     (dest_ip >> 8) & 0xFF, dest_ip & 0xFF]
 
-    return header, header_bytes
+    return header, header_bytes, data_bytes
 
 @cocotb.test()
 async def test_data_io(dut):
     cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
 
-    axis_src = axis_source(dut.i_clk, dut.s_axis_tdata, dut.s_axis_tvalid, dut.s_axis_tready, dut.s_axis_tlast)
     axis_snk = axis_sink(dut.i_clk, dut.m_axis_tdata, dut.m_axis_tvalid, dut.m_axis_tready, dut.m_axis_tlast)
 
-    header, header_bytes = await send_ipv4_packet(
-        dut,
-        0x4,
-        0x5,
-        0x0,
-        0x0,
-        0x0073,
-        0x0000,
-        0x2,
-        0x0,
-        0x40,
-        0x11,
-        0xc0a80001,
-        0xc0a800c7,
-        [101],
-        axis_src
-    )
-
     data_comp = []
-    data_comp += header_bytes
 
-    for i in range(1000):
-        await RisingEdge(dut.i_clk)
+    data = []
+    for i in range(1):
+        data += [random.randint(0, 2**8 - 1)]
 
-    data_sent = [int(x) for x in axis_src.s_axis_tdata_sent]
-    data_comp.extend(data_sent)
-    axis_src.s_axis_tdata_sent = []
-
-    header, header_bytes = await send_ipv4_packet(
+    header, header_bytes, data_bytes = await send_ipv4_packet(
         dut,
         0x4,
         0x5,
@@ -126,22 +108,45 @@ async def test_data_io(dut):
         0x11,
         0xc0a80001,
         0xc0a800c7,
-        [1, 2, 3, 4, 5],
-        axis_src
+        data
     )
 
     data_comp += header_bytes
+    data_comp += data_bytes
 
-    for i in range(1000):
+    data = []
+    for i in range(100):
+        data += [random.randint(0, 2**8 - 1)]
+
+    header, header_bytes, data_bytes = await send_ipv4_packet(
+        dut,
+        0x4,
+        0x5,
+        0x0,
+        0x0,
+        0x0073,
+        0x0000,
+        0x2,
+        0x0,
+        0x40,
+        0x11,
+        0xc0a80001,
+        0xc0a800c7,
+        data
+    )
+
+    data_comp += header_bytes
+    data_comp += data_bytes
+
+    for i in range(2):
         await RisingEdge(dut.i_clk)
-
-    data_sent = [int(x) for x in axis_src.s_axis_tdata_sent]
-    data_comp.extend(data_sent)
     
     data_read = [int(x) for x in axis_snk.m_axis_tdata_read]
 
     print(data_read)
+    print()
     print(data_comp)
+    print([int(x) for x in axis_snk.m_axis_tlast_read])
 
     assert data_read == data_comp
 
