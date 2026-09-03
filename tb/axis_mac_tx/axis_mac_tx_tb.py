@@ -18,64 +18,123 @@ sys.path.append(helper_path)
 
 from helper import axis_source, axis_sink
 
-from cocotb.simtime import get_sim_time
+from binascii import crc32
+
+async def send_ethernet_packet(dut, destination_mac, source_mac, length, data):
+    destination_mac = destination_mac & 0xFFFFFFFFFFFF
+    source_mac = source_mac & 0xFFFFFFFFFFFF
+    length = length & 0xFFFF
+
+    await RisingEdge(dut.i_clk)
+    dut.s_axis_eth_destination_mac.value = destination_mac
+    dut.s_axis_eth_source_mac.value = source_mac
+    dut.s_axis_eth_length.value = length
+    dut.s_axis_eth_header_tvalid.value = 1
+    await RisingEdge(dut.i_clk)
+    while (not (dut.s_axis_eth_header_tvalid.value and dut.s_axis_eth_header_tready.value)):
+        await RisingEdge(dut.i_clk)
+    dut.s_axis_eth_header_tvalid.value = 0
+
+    data = [int(x & 0xFF) for x in data]
+    axis_src = axis_source(dut.i_clk, dut.s_axis_tdata, dut.s_axis_tvalid, dut.s_axis_tready, dut.s_axis_tlast)
+    data_bytes = await axis_src.send_wait(data)
+
+    header = [
+        destination_mac,
+        source_mac,
+        length
+    ]
+
+    header_bytes = [
+        (destination_mac >> 40) & 0xFF,
+        (destination_mac >> 32) & 0xFF,
+        (destination_mac >> 24) & 0xFF,
+        (destination_mac >> 16) & 0xFF,
+        (destination_mac >> 8) & 0xFF,
+        destination_mac & 0xFF,
+        (source_mac >> 40) & 0xFF,
+        (source_mac >> 32) & 0xFF,
+        (source_mac >> 24) & 0xFF,
+        (source_mac >> 16) & 0xFF,
+        (source_mac >> 8) & 0xFF,
+        source_mac & 0xFF,
+        (length >> 8) & 0xFF,
+        length & 0xFF
+    ]
+
+    if (len(data_bytes) < 46):
+        for i in range(46 - len(data_bytes)):
+            data_bytes.append(0x00)
+
+    header_data_pad = []
+    header_data_pad += header_bytes
+    header_data_pad += data_bytes
+    header_data_pad = bytes(header_data_pad)
+
+    checksum = crc32(header_data_pad)
+    if (checksum < 0):
+        checksum = checksum % (1<<32)
+
+    checksum_bytes = [
+        (checksum >> 24) & 0xFF,
+        (checksum >> 16) & 0xFF,
+        (checksum >> 8) & 0xFF,
+        checksum & 0xFF
+    ]
+
+    checksum_for_phy = [int('{:08b}'.format(x)[::-1], 2) for x in checksum_bytes]
+
+    return header, header_bytes, data_bytes, checksum, checksum_bytes, checksum_for_phy
 
 @cocotb.test()
 async def test_data_io(dut):
     cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
 
-    axis_src_eth_dest = axis_source(dut.i_clk, dut.s_axis_eth_destination_addr, dut.s_axis_eth_tvalid, dut.s_axis_eth_tready)
-    axis_src_eth_src = axis_source(dut.i_clk, dut.s_axis_eth_source_addr, dut.s_axis_eth_tvalid, dut.s_axis_eth_tready)
-    axis_src_eth_type = axis_source(dut.i_clk, dut.s_axis_eth_type, dut.s_axis_eth_tvalid, dut.s_axis_eth_tready)
-
-    eth_dest = [0x1, 0x2, 0x3, 0x4, 0x5]
-    eth_src = [0x5, 0x4, 0x3, 0x2, 0x1]
-    eth_type = [0x11, 0x22, 0x33, 0x44, 0x55]
-
-    axis_src_eth_dest.send_nowait(eth_dest)
-    axis_src_eth_src.send_nowait(eth_src)
-    axis_src_eth_type.send_nowait(eth_type)
-
-    axis_src = axis_source(dut.i_clk, dut.s_axis_tdata, dut.s_axis_tvalid, dut.s_axis_tready, dut.s_axis_tlast)
     axis_snk = axis_sink(dut.i_clk, dut.m_axis_tdata, dut.m_axis_tvalid, dut.m_axis_tready, dut.m_axis_tlast)
 
-    data = []
-    # l = 1
-    # for i in range(l):
-    data += [5]
+    data_comp = []
 
-    axis_src.send_nowait(data)
+    header, header_bytes, data_bytes, checksum, checksum_bytes, checksum_for_phy = await send_ethernet_packet(
+        dut,
+        0x300000000001,
+        0x700000000002,
+        0x0990,
+        [0x0F]
+    )
 
-    data = []
-    l = 10
-    for i in range(l):
-        data += [i]
+    data_comp += [0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0xD5]
+    data_comp += header_bytes
+    data_comp += data_bytes
+    data_comp += checksum_for_phy
+    data_comp += [0x00]*12
 
-    axis_src.send_nowait(data)
+    header, header_bytes, data_bytes, checksum, checksum_bytes, checksum_for_phy = await send_ethernet_packet(
+        dut,
+        0x900000000004,
+        0x400000000003,
+        0x0102,
+        [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+    )
 
-    data = []
-    l = 43
-    for i in range(l):
-        data += [i]
+    data_comp += [0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0xD5]
+    data_comp += header_bytes
+    data_comp += data_bytes
+    data_comp += checksum_for_phy
+    data_comp += [0x00]*12
 
-    axis_src.send_nowait(data)
-
-    data = []
-    l = 100
-    for i in range(l):
-        data += [i]
-
-    axis_src.send_nowait(data)
-
-    data = []
-    l = 132
-    for i in range(l):
-        data += [i]
-
-    axis_src.send_nowait(data)
-
-    for i in range(2000):
+    for i in range(100):
         await RisingEdge(dut.i_clk)
+
+    data_read = [int(x) for x in axis_snk.m_axis_tdata_read]
+
+    print(data_read)
+    print()
+    print(data_comp)
+    print()
+    print([int(x) for x in axis_snk.m_axis_tlast_read])
+
+    assert data_read == data_comp
+
 
 def test_runner():
     sim = os.getenv("SIM", "icarus")
@@ -96,6 +155,8 @@ def test_runner():
     # runner.test specific parameter
     test_module = os.path.splitext(os.path.basename(__file__))[0]
     hdl_toplevel_lang = "verilog"
+    seed = 0
+
 
     runner = get_runner(sim)
     runner.build(
@@ -111,6 +172,7 @@ def test_runner():
         test_module=test_module,
         hdl_toplevel=hdl_toplevel,
         hdl_toplevel_lang=hdl_toplevel_lang,
+        seed = seed,
         waves=waves,
         timescale=timescale,
     )
