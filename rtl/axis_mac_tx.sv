@@ -48,13 +48,13 @@ assign m_axis_tlast = m_axis_tlast_reg;
 
 typedef enum logic [2:0] {
     STATE_ETHERNET_IDLE,
-    // STATE_ETHERNET_PREAMBLE_SFD,
+    STATE_ETHERNET_PREAMBLE_SFD,
     STATE_ETHERNET_HEADER_AND_TYPE,
     STATE_ETHERNET_DATA,
     STATE_ETHERNET_PAD,
     STATE_ETHERNET_CRC_REG,
-    STATE_ETHERNET_CRC
-    // STATE_ETHERNET_IPG
+    STATE_ETHERNET_CRC,
+    STATE_ETHERNET_IPG
 } state_t;
 
 state_t state_reg = STATE_ETHERNET_IDLE, state_next;
@@ -69,8 +69,8 @@ logic crc_data_valid_reg = 1'b0, crc_data_valid_next;
 
 logic crc_rst_reg = 1'b0, crc_rst_next;
 
-// localparam ETH_PRE = 8'h55;
-// localparam ETH_SFD = 8'hD5;
+localparam ETH_PRE = 8'h55;
+localparam ETH_SFD = 8'hD5;
 
 crc #(
     .DATA_WIDTH(DATA_WIDTH),
@@ -78,6 +78,7 @@ crc #(
     .GEN_POLY_WIDTH(32),
     .INITIAL_CRC_VALUE({32{1'b1}}),
     .REVERSE_INPUT_BIT_ORDER(1),
+    .REVERSE_OUTPUT_BIT_ORDER(1),
     .COMPLEMENT_OUTPUT(1)
 )
 crc_inst (
@@ -116,29 +117,28 @@ always_comb begin
             if (s_axis_eth_header_tvalid && s_axis_eth_header_tready) begin
                 s_axis_eth_header_next = {s_axis_eth_destination_mac, s_axis_eth_source_mac, s_axis_eth_length};
                 s_axis_eth_tready_next = 1'b0;
-                m_axis_tdata_next = s_axis_eth_header_next[111:104];
+                m_axis_tdata_next = ETH_PRE;
                 m_axis_tvalid_next = 1'b1;
-                crc_data_valid_next = 1'b1;
                 count_next = '0;
-                state_next = STATE_ETHERNET_HEADER_AND_TYPE;
+                state_next = STATE_ETHERNET_PREAMBLE_SFD;
             end
         end
 
-        // STATE_ETHERNET_PREAMBLE_SFD: begin
-        //     if (m_axis_tvalid && m_axis_tready) begin
-        //         count_next = count_reg + 1'b1;
-        //         if (count_next == 7) begin
-        //             m_axis_tdata_next = ETH_SFD;
-        //         end
+        STATE_ETHERNET_PREAMBLE_SFD: begin
+            if (m_axis_tvalid && m_axis_tready) begin
+                count_next = count_reg + 1'b1;
+                if (count_next == 7) begin
+                    m_axis_tdata_next = ETH_SFD;
+                end
 
-        //         if (count_next == 8) begin
-        //             crc_data_valid_next = 1'b1;
-        //             m_axis_tdata_next = s_axis_eth_header_reg[111:104];
-        //             count_next = '0;
-        //             state_next = STATE_ETHERNET_HEADER_AND_TYPE;
-        //         end
-        //     end
-        // end
+                if (count_next == 8) begin
+                    crc_data_valid_next = 1'b1;
+                    m_axis_tdata_next = s_axis_eth_header_reg[111:104];
+                    count_next = '0;
+                    state_next = STATE_ETHERNET_HEADER_AND_TYPE;
+                end
+            end
+        end
 
         STATE_ETHERNET_HEADER_AND_TYPE: begin
             if (m_axis_tvalid && m_axis_tready) begin
@@ -210,33 +210,28 @@ always_comb begin
                     m_axis_tdata_next[i] = crc_next[31 - i];
                 end
 
-                if (count_next == 3) begin
-                    m_axis_tlast_next = 1'b1;
-                end
-
                 if (count_next == 4) begin
-                    state_next = STATE_ETHERNET_IDLE;
-                    m_axis_tvalid_next = 1'b0;
-                    m_axis_tlast_next = 1'b0;
+                    state_next = STATE_ETHERNET_IPG;
+                    m_axis_tdata_next = '0;
                     count_next = '0;
                 end
             end
         end
 
-        // STATE_ETHERNET_IPG: begin
-        //     if (m_axis_tvalid && m_axis_tready) begin
-        //         count_next = count_reg + 1'b1;
-        //         if (count_next == 11) begin
-        //             m_axis_tlast_next = 1'b1;
-        //         end
+        STATE_ETHERNET_IPG: begin
+            if (m_axis_tvalid && m_axis_tready) begin
+                count_next = count_reg + 1'b1;
+                if (count_next == 11) begin
+                    m_axis_tlast_next = 1'b1;
+                end
 
-        //         if (count_next == 12) begin
-        //             m_axis_tvalid_next = 1'b0;
-        //             m_axis_tlast_next = 1'b0;
-        //             state_next = STATE_ETHERNET_IDLE;
-        //         end
-        //     end
-        // end
+                if (count_next == 12) begin
+                    m_axis_tvalid_next = 1'b0;
+                    m_axis_tlast_next = 1'b0;
+                    state_next = STATE_ETHERNET_IDLE;
+                end
+            end
+        end
 
         default: begin
             state_next = STATE_ETHERNET_IDLE;
