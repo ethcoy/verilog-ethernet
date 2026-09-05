@@ -213,7 +213,7 @@ def ipv4_packet_parser(packet):
     checksum = (packet[10] << 8) | packet[11]
     source_ip = (packet[12] << 24) | (packet[13] << 16) | (packet[14] << 8) | packet[15]
     destination_ip = (packet[16] << 24) | (packet[17] << 16) | (packet[18] << 8) | packet[19]
-    data_bytes = packet[20:]
+    data_bytes = packet[20:length]
 
     return version, ihl, dscp, ecn, length, identification, flags, fragment_offset, ttl, protocol, checksum, source_ip, destination_ip, data_bytes
 
@@ -233,7 +233,7 @@ async def test_data_io(dut):
     axis_src = axis_source(dut.i_clk, dut.s_axis_tdata, dut.s_axis_tvalid, dut.s_axis_tready, dut.s_axis_tlast)
     mii_snk = mii_sink(dut.xmii_tx_clk, dut.xmii_txd, dut.xmii_tx_en)
 
-    data = [1, 2, 3, 4, 5]
+    data = [1, 2, 3, 4, 5, 6]
     data_len = len(data)
 
     header, header_bytes = await send_udp_header(
