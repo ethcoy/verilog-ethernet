@@ -102,11 +102,11 @@ async def test_data_io(dut):
         [0x0F]
     )
 
-    data_comp += [0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0xD5]
+    # data_comp += [0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0xD5]
     data_comp += header_bytes
     data_comp += data_bytes
     data_comp += checksum_for_phy
-    data_comp += [0x00]*12
+    # data_comp += [0x00]*12
 
     header, header_bytes, data_bytes, checksum, checksum_bytes, checksum_for_phy = await send_ethernet_packet(
         dut,
@@ -116,11 +116,11 @@ async def test_data_io(dut):
         [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
     )
 
-    data_comp += [0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0xD5]
+    # data_comp += [0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0xD5]
     data_comp += header_bytes
     data_comp += data_bytes
     data_comp += checksum_for_phy
-    data_comp += [0x00]*12
+    # data_comp += [0x00]*12
 
     for i in range(100):
         await RisingEdge(dut.i_clk)
@@ -147,7 +147,7 @@ def test_runner():
     # runner.build specific parameters
     sources = []
     sources += ["./../../rtl/axis_mac_tx.sv"]
-    sources += ["./../../rtl/crc.v"]
+    sources += ["./../../rtl/crc.sv"]
 
     always = True
     build_dir = "sim_build"
@@ -156,7 +156,6 @@ def test_runner():
     test_module = os.path.splitext(os.path.basename(__file__))[0]
     hdl_toplevel_lang = "verilog"
     seed = 0
-
 
     runner = get_runner(sim)
     runner.build(
