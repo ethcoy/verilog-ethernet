@@ -25,35 +25,34 @@ SOFTWARE.
 */
 
 module axis_mac_xmii_phy_async_fifo #(
-    parameter c_DATA_WIDTH = 8,
-    parameter c_FIFO_DEPTH = 1024,
-    parameter c_PACKET_SIZE = 512
+    parameter DATA_WIDTH = 8,
+    parameter FIFO_DEPTH = 1024
 ) (
-    input wire s_clk,
-    input wire m_clk,
-    input wire s_rst,
-    input wire m_rst,
+    input wire logic s_clk,
+    input wire logic m_clk,
+    input wire logic s_rst,
+    input wire logic m_rst,
 
-    input wire [c_DATA_WIDTH - 1:0] s_axis_tdata,
-    input wire s_axis_tvalid,
-    output wire s_axis_tready,
-    input wire s_axis_tlast,
+    input wire logic [DATA_WIDTH - 1:0] s_axis_tdata,
+    input wire logic s_axis_tvalid,
+    output wire logic s_axis_tready,
+    input wire logic s_axis_tlast,
 
-    output wire [c_DATA_WIDTH - 1:0] m_axis_tdata,
-    output wire m_axis_tvalid,
-    input wire m_axis_tready,
-    output wire m_axis_tlast,
+    output wire logic [DATA_WIDTH - 1:0] m_axis_tdata,
+    output wire logic m_axis_tvalid,
+    input wire logic m_axis_tready,
+    output wire logic m_axis_tlast,
 
     // Controls
-    input wire i_xmii_phy_busy,
-    output wire o_packet_ready
+    input wire logic i_xmii_phy_busy,
+    output wire logic o_packet_ready
 );
 
 wire s_axis_tready_inst1;
 
 axis_async_fifo #(
-    .c_DATA_WIDTH(c_DATA_WIDTH),
-    .c_FIFO_DEPTH(c_FIFO_DEPTH)
+    .DATA_WIDTH(DATA_WIDTH),
+    .FIFO_DEPTH(FIFO_DEPTH)
 ) 
 axis_async_fifo_inst1 (
     .s_clk(s_clk),
@@ -70,21 +69,20 @@ axis_async_fifo_inst1 (
     .m_axis_tlast(m_axis_tlast)
 );
 
-localparam c_MAX_PACKETS_BUFFERED = c_FIFO_DEPTH/c_PACKET_SIZE > 3 ? c_FIFO_DEPTH/c_PACKET_SIZE : 3;
+// localparam MAX_PACKETS_BUFFERED = FIFO_DEPTH/PACKET_SIZE > 3 ? FIFO_DEPTH/PACKET_SIZE : 3;
 
 wire s_axis_tready_inst2;
 
 wire m_axis_tvalid_inst2;
-wire m_axis_tlast_inst2;
 
 assign s_axis_tready = s_axis_tready_inst1 && s_axis_tready_inst2;
 
 assign o_packet_ready = m_axis_tvalid_inst2;
 
 axis_async_fifo #(
-    .c_DATA_WIDTH(1),
-    // .c_FIFO_DEPTH(c_MAX_PACKETS_BUFFERED)
-    .c_FIFO_DEPTH(c_FIFO_DEPTH)
+    .DATA_WIDTH(1),
+    // .FIFO_DEPTH(MAX_PACKETS_BUFFERED)
+    .FIFO_DEPTH(FIFO_DEPTH)
 ) 
 axis_async_fifo_inst2 (
     .s_clk(s_clk),

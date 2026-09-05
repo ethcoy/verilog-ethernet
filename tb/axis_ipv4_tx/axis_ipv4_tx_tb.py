@@ -46,8 +46,8 @@ async def send_ipv4_packet(dut, version, ihl, dscp, ecn, length, identification,
     dut.s_axis_ipv4_fragment_offset.value = fragment_offset
     dut.s_axis_ipv4_ttl.value = ttl
     dut.s_axis_ipv4_protocol.value = protocol
-    dut.s_axis_ipv4_source_addr.value = source_ip
-    dut.s_axis_ipv4_destination_addr.value = dest_ip
+    dut.s_axis_ipv4_source_ip.value = source_ip
+    dut.s_axis_ipv4_destination_ip.value = dest_ip
     dut.s_axis_ipv4_header_tvalid.value = 1
     await RisingEdge(dut.i_clk)
     while (not (dut.s_axis_ipv4_header_tvalid.value and dut.s_axis_ipv4_header_tready.value)):
@@ -168,6 +168,7 @@ def test_runner():
     # runner.test specific parameter
     test_module = os.path.splitext(os.path.basename(__file__))[0]
     hdl_toplevel_lang = "verilog"
+    seed = 0
 
     runner = get_runner(sim)
     runner.build(
@@ -183,6 +184,7 @@ def test_runner():
         test_module=test_module,
         hdl_toplevel=hdl_toplevel,
         hdl_toplevel_lang=hdl_toplevel_lang,
+        seed = seed,
         waves=waves,
         timescale=timescale,
     )

@@ -98,8 +98,8 @@ def test_runner():
 
     # runner.build specific parameters
     sources = []
-    sources += ["./../../rtl/axis_mac_xmii_phy_async_fifo.v"]
-    sources += ["./../../rtl/axis_async_fifo.v"]
+    sources += ["./../../rtl/axis_mac_xmii_phy_async_fifo.sv"]
+    sources += ["./../../rtl/axis_async_fifo.sv"]
 
     always = True
     build_dir = "sim_build"

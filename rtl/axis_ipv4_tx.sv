@@ -4,9 +4,7 @@ module axis_ipv4_tx #(
     input wire logic i_clk,
     input wire logic i_rst,
 
-    /*
-     * IPv4 header interface
-     */
+    // IPv4 AXI-Stream sink header interface
     input wire logic [3:0] s_axis_ipv4_version,
     input wire logic [3:0] s_axis_ipv4_ihl,
     input wire logic [5:0] s_axis_ipv4_dscp,
@@ -17,21 +15,18 @@ module axis_ipv4_tx #(
     input wire logic [12:0] s_axis_ipv4_fragment_offset,
     input wire logic [7:0] s_axis_ipv4_ttl,
     input wire logic [7:0] s_axis_ipv4_protocol,
-    // Checksum is computed by this module
-    // input wire [7:0] s_axis_ipv4_checksum,
-    input wire logic [31:0] s_axis_ipv4_source_addr,
-    input wire logic [31:0] s_axis_ipv4_destination_addr,
+    input wire logic [31:0] s_axis_ipv4_source_ip,
+    input wire logic [31:0] s_axis_ipv4_destination_ip,
     input wire logic s_axis_ipv4_header_tvalid,
     output wire logic s_axis_ipv4_header_tready,
 
-    /*
-     * IPv4 data interface
-     */
+    // IPv4 AXI-Stream data sink interface
     input wire logic [DATA_WIDTH - 1:0] s_axis_tdata,
     input wire logic s_axis_tvalid,
     output wire logic s_axis_tready,
     input wire logic s_axis_tlast,
 
+    // IPv4 AXI-Stream data source interface
     output wire logic [DATA_WIDTH - 1:0] m_axis_tdata,
     output wire logic m_axis_tvalid,
     input wire logic m_axis_tready,
@@ -39,7 +34,6 @@ module axis_ipv4_tx #(
 );
 
 logic [159:0] s_axis_ipv4_header_reg = '0, s_axis_ipv4_header_next;
-logic [159:0] s_axis_ipv4_header_copy_reg = '0, s_axis_ipv4_header_copy_next;
 logic s_axis_ipv4_header_tready_reg = 1'b0, s_axis_ipv4_header_tready_next;
 
 assign s_axis_ipv4_header_tready = s_axis_ipv4_header_tready_reg;
@@ -75,7 +69,6 @@ always_comb begin
     state_next = state_reg;
 
     s_axis_ipv4_header_next = s_axis_ipv4_header_reg;
-    s_axis_ipv4_header_copy_next = s_axis_ipv4_header_copy_reg;
     s_axis_ipv4_header_tready_next = s_axis_ipv4_header_tready_reg;
 
     ipv4_checksum_next = ipv4_checksum_reg;
@@ -99,8 +92,7 @@ always_comb begin
                 s_axis_ipv4_header_next = {s_axis_ipv4_version, s_axis_ipv4_ihl, s_axis_ipv4_dscp,
                                            s_axis_ipv4_ecn, s_axis_ipv4_length, s_axis_ipv4_id, s_axis_ipv4_flags,
                                            s_axis_ipv4_fragment_offset, s_axis_ipv4_ttl, s_axis_ipv4_protocol,
-                                           16'd0, s_axis_ipv4_source_addr, s_axis_ipv4_destination_addr};
-                s_axis_ipv4_header_copy_next = s_axis_ipv4_header_next;
+                                           16'd0, s_axis_ipv4_source_ip, s_axis_ipv4_destination_ip};
                 s_axis_ipv4_header_tready_next = 1'b0;
                 count_next = '0;
                 ipv4_checksum_next = '0;
@@ -185,6 +177,7 @@ always_comb begin
                 count_next = count_reg + 1'b1;
                 if (s_axis_tlast_reg) begin
                     s_axis_tready_next = 1'b0;
+                    m_axis_tlast_next = 1'b0;
                     state_next = STATE_IPV4_IDLE;
                 end
             end
@@ -194,6 +187,10 @@ always_comb begin
                 s_axis_tlast_next = s_axis_tlast;
                 m_axis_tdata_next = s_axis_tdata;
                 m_axis_tvalid_next = 1'b1;
+                m_axis_tlast_next = 1'b0;
+                if (s_axis_tlast_next) begin
+                    m_axis_tlast_next = 1'b1;
+                end
             end
         end
 
@@ -207,7 +204,6 @@ always_ff @(posedge i_clk) begin
     state_reg <= state_next;
 
     s_axis_ipv4_header_reg <= s_axis_ipv4_header_next;
-    s_axis_ipv4_header_copy_reg <= s_axis_ipv4_header_copy_next;
     s_axis_ipv4_header_tready_reg <= s_axis_ipv4_header_tready_next;
 
     s_axis_tdata_reg <= s_axis_tdata_next;
