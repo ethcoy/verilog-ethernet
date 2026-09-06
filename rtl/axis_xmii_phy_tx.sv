@@ -1,6 +1,6 @@
 module axis_xmii_phy_tx #(
     parameter DATA_WIDTH = 8,
-    parameter XMII_WIDTH = 4
+    parameter XMII_WIDTH = 2
 ) (
     input wire logic i_rst,
 
@@ -42,10 +42,12 @@ assign xmii_tx_en = xmii_tx_en_reg;
 assign o_xmii_phy_tx_busy = xmii_phy_tx_busy_reg;
 
 localparam DATA_WIDTH_PER_XMII_WIDTH = DATA_WIDTH/XMII_WIDTH;
+localparam IPG_COUNT = 12*8/XMII_WIDTH;
 
-typedef enum logic [0:0] {
+typedef enum logic [1:0] {
     STATE_PHY_IDLE,
-    STATE_PHY_SEND
+    STATE_PHY_SEND,
+    STATE_PHY_IPG
 } state_t;
 
 state_t state_reg = STATE_PHY_IDLE, state_next;
@@ -90,9 +92,17 @@ always_comb begin
                 if (s_axis_tlast_reg) begin
                     s_axis_tlast_next = 1'b0;
                     xmii_tx_en_next = 1'b0;
-                    xmii_phy_tx_busy_next = 1'b0;
-                    state_next = STATE_PHY_IDLE;
+                    state_next = STATE_PHY_IPG;
                 end
+            end
+        end
+
+        STATE_PHY_IPG: begin
+            count_next = count_reg + 1'b1;
+            if (count_next == IPG_COUNT) begin
+                count_next = '0;
+                xmii_phy_tx_busy_next = 1'b0;
+                state_next = STATE_PHY_IDLE;
             end
         end
 

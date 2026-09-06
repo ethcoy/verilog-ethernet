@@ -51,6 +51,41 @@ class mii_sink:
                     self.packets_received.append(bytes_received)
                     bytes_received = []
 
+class rmii_sink:
+    def __init__(self, rmii_tx_clk:LogicObject, rmii_txd:LogicArray, rmii_tx_en:LogicArray):
+        self.rmii_tx_clk = rmii_tx_clk
+        self.rmii_txd = rmii_txd
+        self.rmii_tx_en = rmii_tx_en
+        self.packets_received = []
+        cocotb.start_soon(Clock(self.rmii_tx_clk, 20, unit="ns").start())
+        cocotb.start_soon(self.__rmii_sink__())
+
+    async def __rmii_sink__(self):
+        bytes_received = []
+        count = 0
+        receiving = False
+        while (True):
+            await RisingEdge(self.rmii_tx_clk)
+            if (self.rmii_tx_en.value):
+                receiving = True
+                count = count + 1
+                if (count == 1):
+                    byte = int(self.rmii_txd.value)
+                if (count == 2):
+                    byte = byte | (int(self.rmii_txd.value) << 2)
+                if (count == 3):
+                    byte = byte | (int(self.rmii_txd.value) << 4)
+                if (count == 4):
+                    count = 0
+                    byte = byte | (int(self.rmii_txd.value) << 6)
+                    bytes_received.append(byte)
+            else:
+                count = 0
+                if (receiving):
+                    receiving = False
+                    self.packets_received.append(bytes_received)
+                    bytes_received = []
+
 async def send_data(dut, src, data):
     await RisingEdge(dut.xmii_tx_clk)
     src.send_nowait(data)
@@ -60,58 +95,60 @@ async def send_data(dut, src, data):
         await RisingEdge(dut.xmii_tx_clk)
     dut.i_packet_ready.value = 0
 
+# @cocotb.test()
+# async def test_mii(dut):
+#     axis_src = axis_source(dut.xmii_tx_clk, dut.s_axis_tdata, dut.s_axis_tvalid, dut.s_axis_tready, dut.s_axis_tlast)
+#     mii_snk = mii_sink(dut.xmii_tx_clk, dut.xmii_txd, dut.xmii_tx_en)
+
+#     await RisingEdge(dut.xmii_tx_clk)
+
+#     data = []
+#     data += [1]
+#     await send_data(dut, axis_src, data)
+
+#     data = []
+#     data += [0, 1, 2, 3, 4, 255]
+#     await send_data(dut, axis_src, data)
+
+#     for i in range(100):
+#         await RisingEdge(dut.xmii_tx_clk)
+
+#     data_sent = [int(x) for x in axis_src.s_axis_tdata_sent]
+#     data_read = []
+
+#     for i in range(len(mii_snk.packets_received)):
+#         for j in range(len(mii_snk.packets_received[i])):
+#             data_read += [int(mii_snk.packets_received[i][j])]
+
+#     print(data_sent)
+#     print(data_read)
+
+#     assert data_read == data_sent
+
 @cocotb.test()
-async def test_data_io(dut):
+async def test_rmii(dut):
     axis_src = axis_source(dut.xmii_tx_clk, dut.s_axis_tdata, dut.s_axis_tvalid, dut.s_axis_tready, dut.s_axis_tlast)
-    mii_snk = mii_sink(dut.xmii_tx_clk, dut.xmii_txd, dut.xmii_tx_en)
+    rmii_snk = rmii_sink(dut.xmii_tx_clk, dut.xmii_txd, dut.xmii_tx_en)
 
     await RisingEdge(dut.xmii_tx_clk)
-    await RisingEdge(dut.xmii_tx_clk)
-    await RisingEdge(dut.xmii_tx_clk)
 
     data = []
-    l = 1
-    for i in range(l):
-        data += [random.randint(0, 255)]
-
+    data += [1]
     await send_data(dut, axis_src, data)
 
     data = []
-    l = 50
-    for i in range(l):
-        data += [random.randint(0, 255)]
-
+    data += [0, 1, 2, 3, 4, 255]
     await send_data(dut, axis_src, data)
 
-    for i in range(l*5):
-        await RisingEdge(dut.xmii_tx_clk)
-
-    data = []
-    l = 100
-    for i in range(l):
-        data += [random.randint(0, 255)]
-
-    await send_data(dut, axis_src, data)
-
-    for i in range(l*5):
-        await RisingEdge(dut.xmii_tx_clk)
-
-    data = []
-    l = 323
-    for i in range(l):
-        data += [random.randint(0, 255)]
-
-    await send_data(dut, axis_src, data)
-
-    for i in range(l*5):
+    for i in range(1000):
         await RisingEdge(dut.xmii_tx_clk)
 
     data_sent = [int(x) for x in axis_src.s_axis_tdata_sent]
     data_read = []
 
-    for i in range(len(mii_snk.packets_received)):
-        for j in range(len(mii_snk.packets_received[i])):
-            data_read += [int(mii_snk.packets_received[i][j])]
+    for i in range(len(rmii_snk.packets_received)):
+        for j in range(len(rmii_snk.packets_received[i])):
+            data_read += [int(rmii_snk.packets_received[i][j])]
 
     print(data_sent)
     print(data_read)
