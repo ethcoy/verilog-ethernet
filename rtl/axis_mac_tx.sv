@@ -53,8 +53,7 @@ typedef enum logic [2:0] {
     STATE_ETHERNET_DATA,
     STATE_ETHERNET_PAD,
     STATE_ETHERNET_CRC_REG,
-    STATE_ETHERNET_CRC,
-    STATE_ETHERNET_IPG
+    STATE_ETHERNET_CRC
 } state_t;
 
 state_t state_reg = STATE_ETHERNET_IDLE, state_next;
@@ -71,6 +70,14 @@ logic crc_rst_reg = 1'b0, crc_rst_next;
 
 localparam ETH_PRE = 8'h55;
 localparam ETH_SFD = 8'hD5;
+
+/*
+    This produces a CRC in the Ethernet FCS order (LSByte to MSByte)
+    Was initially taking the order that was given by this as MSByte to LSByte, but since I use the
+    generator polynomial 32'h04c11db7 (this isn't the one in IEEE802.3), the bytes are already flipped
+    (interpretation from trial and error after using wireshark with "sudo ethtool -K <interface> rx-all on", so might be incorrect...
+    will verify further later)
+*/
 
 crc #(
     .DATA_WIDTH(DATA_WIDTH),
@@ -193,41 +200,36 @@ always_comb begin
             state_next = STATE_ETHERNET_CRC;
             count_next = '0;
             crc_next = crc_wire;
+            m_axis_tdata_next = crc_next[7:0];
+//            crc_next = {<<8{crc_wire}};
             crc_data_valid_next = 1'b0;
             crc_rst_next = 1'b1;
             m_axis_tvalid_next = 1'b1;
-            for (integer i = 0; i < DATA_WIDTH; i = i + 1) begin
-                m_axis_tdata_next[i] = crc_next[31 - i];
-            end
+//            for (integer i = 0; i < DATA_WIDTH; i = i + 1) begin
+//                m_axis_tdata_next[i] = crc_next[31 - i];
+//                m_axis_tdata_next[i] = crc_next[24 + i];
+//            end
         end
 
         STATE_ETHERNET_CRC: begin
             crc_rst_next = 1'b0;
             if (m_axis_tvalid && m_axis_tready) begin
                 count_next = count_reg + 1'b1;
-                crc_next = crc_reg << DATA_WIDTH;
-                for (integer i = 0; i < DATA_WIDTH; i = i + 1) begin
-                    m_axis_tdata_next[i] = crc_next[31 - i];
-                end
+                crc_next = crc_reg >> DATA_WIDTH;
+                m_axis_tdata_next = crc_next[7:0];
+//                for (integer i = 0; i < DATA_WIDTH; i = i + 1) begin
+//                    m_axis_tdata_next[i] = crc_next[31 - i];
+//                    m_axis_tdata_next[i] = crc_next[24 + i];
+//                end
 
-                if (count_next == 4) begin
-                    state_next = STATE_ETHERNET_IPG;
-                    m_axis_tdata_next = '0;
-                    count_next = '0;
-                end
-            end
-        end
-
-        STATE_ETHERNET_IPG: begin
-            if (m_axis_tvalid && m_axis_tready) begin
-                count_next = count_reg + 1'b1;
-                if (count_next == 11) begin
+                if (count_next == 3) begin
                     m_axis_tlast_next = 1'b1;
                 end
 
-                if (count_next == 12) begin
+                if (count_next == 4) begin
                     m_axis_tvalid_next = 1'b0;
                     m_axis_tlast_next = 1'b0;
+                    count_next = '0;
                     state_next = STATE_ETHERNET_IDLE;
                 end
             end

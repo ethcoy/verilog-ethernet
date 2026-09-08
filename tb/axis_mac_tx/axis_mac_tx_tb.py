@@ -76,15 +76,13 @@ async def send_ethernet_packet(dut, destination_mac, source_mac, length, data):
         checksum = checksum % (1<<32)
 
     checksum_bytes = [
-        (checksum >> 24) & 0xFF,
-        (checksum >> 16) & 0xFF,
+        checksum & 0xFF,
         (checksum >> 8) & 0xFF,
-        checksum & 0xFF
+        (checksum >> 16) & 0xFF,
+        (checksum >> 24) & 0xFF
     ]
 
-    checksum_for_phy = [int('{:08b}'.format(x)[::-1], 2) for x in checksum_bytes]
-
-    return header, header_bytes, data_bytes, checksum, checksum_bytes, checksum_for_phy
+    return header, header_bytes, data_bytes, checksum, checksum_bytes
 
 @cocotb.test()
 async def test_data_io(dut):
@@ -94,7 +92,7 @@ async def test_data_io(dut):
 
     data_comp = []
 
-    header, header_bytes, data_bytes, checksum, checksum_bytes, checksum_for_phy = await send_ethernet_packet(
+    header, header_bytes, data_bytes, checksum, checksum_bytes = await send_ethernet_packet(
         dut,
         0x300000000001,
         0x700000000002,
@@ -105,10 +103,9 @@ async def test_data_io(dut):
     data_comp += [0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0xD5]
     data_comp += header_bytes
     data_comp += data_bytes
-    data_comp += checksum_for_phy
-    data_comp += [0x00]*12
+    data_comp += checksum_bytes
 
-    header, header_bytes, data_bytes, checksum, checksum_bytes, checksum_for_phy = await send_ethernet_packet(
+    header, header_bytes, data_bytes, checksum, checksum_bytes = await send_ethernet_packet(
         dut,
         0x900000000004,
         0x400000000003,
@@ -119,8 +116,7 @@ async def test_data_io(dut):
     data_comp += [0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0xD5]
     data_comp += header_bytes
     data_comp += data_bytes
-    data_comp += checksum_for_phy
-    data_comp += [0x00]*12
+    data_comp += checksum_bytes
 
     for i in range(100):
         await RisingEdge(dut.i_clk)
@@ -129,7 +125,7 @@ async def test_data_io(dut):
 
     print(data_read)
     print()
-    print(data_comp)
+    print([hex(x) for x in data_comp])
     print()
     print([int(x) for x in axis_snk.m_axis_tlast_read])
 

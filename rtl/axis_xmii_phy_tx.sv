@@ -91,6 +91,7 @@ always_comb begin
                 xmii_tx_en_next = 1'b1;
                 if (s_axis_tlast_reg) begin
                     s_axis_tlast_next = 1'b0;
+                    xmii_txd_next = '0;
                     xmii_tx_en_next = 1'b0;
                     state_next = STATE_PHY_IPG;
                 end

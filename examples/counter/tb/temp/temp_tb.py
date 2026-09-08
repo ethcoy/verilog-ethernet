@@ -16,7 +16,7 @@ import sys
 helper_path = os.path.abspath("./../../../../../helper")
 sys.path.append(helper_path)
 
-from helper import axis_sink, rmii_sink
+from helper import rmii_sink
 
 def ethernet_packet_parser(packet):
     preamble_bytes = packet[0:6]
@@ -86,91 +86,85 @@ async def test_count(dut):
 
     print(rmii_snk.packets_received)
 
-    ethernet_packet_tuple = ethernet_packet_parser(rmii_snk.packets_received[0])
+    # ethernet_packet_tuple = ethernet_packet_parser(rmii_snk.packets_received[0])
 
-    ethernet_preamble_bytes = ethernet_packet_tuple[0]
-    ethernet_sfd_byte = ethernet_packet_tuple[1]
-    ethernet_destination_mac = ethernet_packet_tuple[2]
-    ethernet_source_mac = ethernet_packet_tuple[3]
-    ethernet_length = ethernet_packet_tuple[4]
-    ethernet_data_bytes = ethernet_packet_tuple[5]
-    ethernet_fcs = ethernet_packet_tuple[6]
+    # ethernet_preamble_bytes = ethernet_packet_tuple[0]
+    # ethernet_sfd_byte = ethernet_packet_tuple[1]
+    # ethernet_destination_mac = ethernet_packet_tuple[2]
+    # ethernet_source_mac = ethernet_packet_tuple[3]
+    # ethernet_length = ethernet_packet_tuple[4]
+    # ethernet_data_bytes = ethernet_packet_tuple[5]
+    # ethernet_fcs = ethernet_packet_tuple[6]
 
-    ipv4_packet_tuple = ipv4_packet_parser(ethernet_data_bytes)
+    # ipv4_packet_tuple = ipv4_packet_parser(ethernet_data_bytes)
 
-    ipv4_version = ipv4_packet_tuple[0]
-    ipv4_ihl = ipv4_packet_tuple[1]
-    ipv4_dscp = ipv4_packet_tuple[2]
-    ipv4_ecn = ipv4_packet_tuple[3]
-    ipv4_length = ipv4_packet_tuple[4]
-    ipv4_identification = ipv4_packet_tuple[5]
-    ipv4_flags = ipv4_packet_tuple[6]
-    ipv4_fragment_offset = ipv4_packet_tuple[7]
-    ipv4_ttl = ipv4_packet_tuple[8]
-    ipv4_protocol = ipv4_packet_tuple[9]
-    ipv4_checksum = ipv4_packet_tuple[10]
-    ipv4_source_ip = ipv4_packet_tuple[11]
-    ipv4_destination_ip = ipv4_packet_tuple[12]
-    ipv4_data_bytes = ipv4_packet_tuple[13]
+    # ipv4_version = ipv4_packet_tuple[0]
+    # ipv4_ihl = ipv4_packet_tuple[1]
+    # ipv4_dscp = ipv4_packet_tuple[2]
+    # ipv4_ecn = ipv4_packet_tuple[3]
+    # ipv4_length = ipv4_packet_tuple[4]
+    # ipv4_identification = ipv4_packet_tuple[5]
+    # ipv4_flags = ipv4_packet_tuple[6]
+    # ipv4_fragment_offset = ipv4_packet_tuple[7]
+    # ipv4_ttl = ipv4_packet_tuple[8]
+    # ipv4_protocol = ipv4_packet_tuple[9]
+    # ipv4_checksum = ipv4_packet_tuple[10]
+    # ipv4_source_ip = ipv4_packet_tuple[11]
+    # ipv4_destination_ip = ipv4_packet_tuple[12]
+    # ipv4_data_bytes = ipv4_packet_tuple[13]
 
-    udp_packet_tuple = udp_packet_parser(ipv4_data_bytes)
+    # udp_packet_tuple = udp_packet_parser(ipv4_data_bytes)
 
-    udp_source_port = udp_packet_tuple[0]
-    udp_destination_port = udp_packet_tuple[1]
-    udp_length = udp_packet_tuple[2]
-    udp_checksum = udp_packet_tuple[3]
-    udp_data_bytes = udp_packet_tuple[4]
+    # udp_source_port = udp_packet_tuple[0]
+    # udp_destination_port = udp_packet_tuple[1]
+    # udp_length = udp_packet_tuple[2]
+    # udp_checksum = udp_packet_tuple[3]
+    # udp_data_bytes = udp_packet_tuple[4]
 
-    print("Ethernet Header Information:")
-    print(f"Destination MAC Address: {hex(ethernet_destination_mac)}")
-    print(f"Source MAC Address: {hex(ethernet_source_mac)}")
-    print(f"Length: {hex(ethernet_length)}")
-    print(f"Frame Check Sequence: {hex(ethernet_fcs)}")
-    print()
-    print("IPv4 Header Information:")
-    print(f"Version: {hex(ipv4_version)}")
-    print(f"IHL: {hex(ipv4_ihl)}")
-    print(f"DSCP: {hex(ipv4_dscp)}")
-    print(f"ECN: {hex(ipv4_ecn)}")
-    print(f"Total Length: {ipv4_length}")
-    print(f"Identificaiton: {hex(ipv4_identification)}")
-    print(f"Flags: {hex(ipv4_flags)}")
-    print(f"Fragment Offset: {hex(ipv4_fragment_offset)}")
-    print(f"Time to Live: {hex(ipv4_ttl)}")
-    print(f"Protocol: {hex(ipv4_protocol)}")
-    print(f"Header Checksum: {hex(ipv4_checksum)}")
-    print(f"Source IP Address: {hex(ipv4_source_ip)}")
-    print(f"Destination IP Address: {hex(ipv4_destination_ip)}")
-    print()
-    print("UDP Header Information:")
-    print(f"Source Port: {hex(udp_source_port)}")
-    print(f"Destination Port: {hex(udp_destination_port)}")
-    print(f"Length: {udp_length}")
-    print(f"Checksum: {hex(udp_checksum)}")
-    print()
-    print("Data:")
-    print(udp_data_bytes)
+    # print("Ethernet Header Information:")
+    # print(f"Destination MAC Address: {hex(ethernet_destination_mac)}")
+    # print(f"Source MAC Address: {hex(ethernet_source_mac)}")
+    # print(f"Length: {hex(ethernet_length)}")
+    # print(f"Frame Check Sequence: {hex(ethernet_fcs)}")
+    # print()
+    # print("IPv4 Header Information:")
+    # print(f"Version: {hex(ipv4_version)}")
+    # print(f"IHL: {hex(ipv4_ihl)}")
+    # print(f"DSCP: {hex(ipv4_dscp)}")
+    # print(f"ECN: {hex(ipv4_ecn)}")
+    # print(f"Total Length: {ipv4_length}")
+    # print(f"Identificaiton: {hex(ipv4_identification)}")
+    # print(f"Flags: {hex(ipv4_flags)}")
+    # print(f"Fragment Offset: {hex(ipv4_fragment_offset)}")
+    # print(f"Time to Live: {hex(ipv4_ttl)}")
+    # print(f"Protocol: {hex(ipv4_protocol)}")
+    # print(f"Header Checksum: {hex(ipv4_checksum)}")
+    # print(f"Source IP Address: {hex(ipv4_source_ip)}")
+    # print(f"Destination IP Address: {hex(ipv4_destination_ip)}")
+    # print()
+    # print("UDP Header Information:")
+    # print(f"Source Port: {hex(udp_source_port)}")
+    # print(f"Destination Port: {hex(udp_destination_port)}")
+    # print(f"Length: {udp_length}")
+    # print(f"Checksum: {hex(udp_checksum)}")
+    # print()
+    # print("Data:")
+    # print(udp_data_bytes)
 
 def test_runner():
     sim = os.getenv("SIM", "icarus")
 
     # runner.build and runner.test specific parameters
-    hdl_toplevel = "axis_tcp_ip_stack"
+    hdl_toplevel = "temp"
     waves = True
     timescale = ("1ns", "1ps")
 
     # runner.build specific parameters
     sources = []
-    sources += ["./../../rtl/axis_tcp_ip_stack.sv"]
-    sources += ["./../../rtl/axis_counter.sv"]
-    sources += ["./../../../../rtl/axis_udp_ipv4_stack_tx.sv"]
-    sources += ["./../../../../rtl/axis_udp_tx.sv"]
-    sources += ["./../../../../rtl/axis_ipv4_tx.sv"]
-    sources += ["./../../../../rtl/axis_mac_tx.sv"]
+    sources += ["./../../rtl/temp.sv"]
+    sources += ["./../../../../rtl/axis_async_fifo.sv"]
     sources += ["./../../../../rtl/axis_mac_xmii_phy_async_fifo.sv"]
     sources += ["./../../../../rtl/axis_xmii_phy_tx.sv"]
-    sources += ["./../../../../rtl/axis_async_fifo.sv"]
-    sources += ["./../../../../rtl/crc.sv"]
 
     always = True
     build_dir = "sim_build"

@@ -59,7 +59,7 @@ axis_udp_ipv4_stack_tx_inst (
     .s_axis_ipv4_header_tvalid(1'b1),
     .s_axis_ipv4_header_tready(),
     .s_axis_eth_destination_mac(48'hc4efbb5a967b),
-    .s_axis_eth_source_mac(48'h100000000001),
+    .s_axis_eth_source_mac(48'hc4efbb5a967c),
     .s_axis_eth_length(16'h0800),
     .s_axis_eth_header_tvalid(1'b1),
     .s_axis_eth_header_tready(),

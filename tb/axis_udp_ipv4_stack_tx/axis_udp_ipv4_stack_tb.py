@@ -175,10 +175,9 @@ def ethernet_packet_parser(packet):
     source_mac_bytes = packet[14:19 + 1]
     length_bytes = packet[20:21 + 1]
     start_of_payload = 22
-    end_of_payload = len(packet) - 16
+    end_of_payload = len(packet) - 4
     data_bytes = packet[start_of_payload:end_of_payload]
-    fcs_bytes = packet[-16:-12]
-    ipg_bytes = packet[-12:]
+    fcs_bytes = packet[-4:]
 
     destination_mac = 0
     for byte in destination_mac_bytes:
@@ -192,12 +191,11 @@ def ethernet_packet_parser(packet):
     for byte in length_bytes:
         length = (length << 8) + byte
 
-    fcs_bytes = [int('{:08b}'.format(x)[::-1], 2) for x in fcs_bytes]
     fcs = 0
-    for x in fcs_bytes:
-        fcs = (fcs << 8) | x
+    for i in range(len(fcs_bytes)):
+        fcs = fcs | (fcs_bytes[i] << (8*i))
 
-    return preamble_bytes, sfd_byte, destination_mac, source_mac, length, data_bytes, fcs, ipg_bytes
+    return preamble_bytes, sfd_byte, destination_mac, source_mac, length, data_bytes, fcs
     
 def ipv4_packet_parser(packet):
     version = packet[0] >> 4
@@ -233,7 +231,9 @@ async def test_data_io(dut):
     axis_src = axis_source(dut.i_clk, dut.s_axis_tdata, dut.s_axis_tvalid, dut.s_axis_tready, dut.s_axis_tlast)
     mii_snk = mii_sink(dut.xmii_tx_clk, dut.xmii_txd, dut.xmii_tx_en)
 
-    data = [1, 2, 3, 4, 5, 6]
+    data = []
+    for i in range(256):
+        data += [i]
     data_len = len(data)
 
     header, header_bytes = await send_udp_header(
@@ -255,21 +255,21 @@ async def test_data_io(dut):
         0x0000,
         0x40,
         0x11,
-        0xc0a80001,
-        0xc0a800c7
+        0xC0000206,
+        0xC0000207
     )
 
     header, header_bytes = await send_ethernet_header(
         dut,
         0xc4efbb5a967b,
-        0x100000000001,
+        0xc4efbb5a967c,
         0x0800
     )
 
     data = await axis_src.send_wait(data)
 
-    for i in range(500):
-        await RisingEdge(dut.xmii_tx_clk)
+    while (len(mii_snk.packets_received) == 0):
+        await Timer(5000, unit='ns')
 
     print(mii_snk.packets_received)
 
@@ -284,7 +284,6 @@ async def test_data_io(dut):
     ethernet_length = ethernet_packet_tuple[4]
     ethernet_data_bytes = ethernet_packet_tuple[5]
     ethernet_fcs = ethernet_packet_tuple[6]
-    ethernet_ipg_bytes = ethernet_packet_tuple[7]
 
     ipv4_packet_tuple = ipv4_packet_parser(ethernet_data_bytes)
 
