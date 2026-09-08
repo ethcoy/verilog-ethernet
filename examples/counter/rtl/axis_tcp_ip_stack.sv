@@ -7,8 +7,7 @@ module axis_tcp_ip_stack #(
     // xMII Tx interface
     input wire logic xmii_tx_clk,
     output wire logic [XMII_WIDTH - 1:0] xmii_txd,
-    output wire logic xmii_tx_en,
-    output wire logic xmii_tx_er
+    output wire logic xmii_tx_en
 );
 
 localparam DATA_LENGTH = 256;
@@ -20,7 +19,8 @@ wire axis_counter_inst_m_axis_tlast;
 wire axis_udp_ipv4_stack_inst_s_axis_tready;
 
 axis_counter #(
-    .DATA_WIDTH(8)
+    .DATA_WIDTH(8),
+    .CYCLE_DELAY(100000)
 ) 
 axis_counter_inst (
     .i_clk(i_clk),
@@ -70,7 +70,7 @@ axis_udp_ipv4_stack_tx_inst (
     .xmii_tx_clk(xmii_tx_clk),
     .xmii_txd(xmii_txd),
     .xmii_tx_en(xmii_tx_en),
-    .xmii_tx_er(xmii_tx_er)
+    .xmii_tx_er()
 );
 
 endmodule
